@@ -680,13 +680,10 @@ main {
         }
 
 .footer-bottom {
-    border-top: 0px;
     padding: 1rem 1rem;
     background: var(--bg-primary);
-    margin-left: 1rem;
-    margin-right: 1rem;
-    width: 100%; /* Faz o footer ocupar toda a largura */
-    margin: 0;
+    margin-left: 0rem;
+    margin-right: 0rem;
 }
 
 .footer-copyright {
@@ -815,6 +812,7 @@ main {
 
 .page-content {
     padding: 3rem 0;
+    flex:1;
     min-height: calc(100vh - 76px - 200px);
 }
 

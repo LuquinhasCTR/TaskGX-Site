@@ -39,6 +39,8 @@
       <!-- Inclui o header partial aqui -->
     <partial name="_Header" />
 
+    
+
     @* Se tiveres header parcial: @await Html.PartialAsync("_Header") *@
 
     @RenderBody()
@@ -52,5 +54,8 @@
     <script src="~/js/auto-dismiss-alerts.js" asp-append-version="true"></script>
 
     @RenderSection("Scripts", required: false)
+
+    
 </body>
+
 </html>
