@@ -10,11 +10,14 @@ namespace TaskGX.Controllers
             return View();
         }
 
-        public IActionResult Sobre()
+        public IActionResult Termos()
         {
             return View();
         }
-      
+        public IActionResult Privacidade()
+        {
+            return View();
+        }
         public IActionResult Login()
         {
             return View();
