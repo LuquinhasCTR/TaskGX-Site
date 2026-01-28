@@ -1,0 +1,121 @@
+﻿@model TaskGX.Models.RegisterViewModel
+
+@{
+    ViewData["Title"] = "Registro";
+}
+
+<main>
+    <div class="page-content">
+        <div class="container">
+            <div class="auth-container">
+                <div class="auth-card shadow-lg">
+                    <div class="auth-header text-center mb-4">
+                        <div class="auth-icon mb-3">
+                            <i class="bi bi-person-plus"></i>
+                        </div>
+                        <h2>Crie sua conta</h2>
+                        <p class="subtitle">É rápido, fácil e totalmente gratuito</p>
+                    </div>
+
+                    @* Mensagens de erro / sucesso *@
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            @TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle me-2"></i>
+                            @TempData["Success"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @* Formulário de registro *@
+                    <form asp-controller="Home" asp-action="Registro" method="post" class="needs-validation" novalidate>
+                        @Html.AntiForgeryToken()
+                        <partial name="_ValidationScriptsPartial" />
+
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Nome" class="form-label">
+                                <i class="bi bi-person me-1"></i>Nome Completo
+                            </label>
+                            <input asp-for="Nome" class="form-control" placeholder="Seu nome completo" autofocus />
+                            <span asp-validation-for="Nome" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label">
+                                <i class="bi bi-envelope me-1"></i>E-mail
+                            </label>
+                            <input asp-for="Email" class="form-control" placeholder="seu@email.com" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                            <div class="form-text">Usaremos este e-mail para entrar na sua conta</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Senha" class="form-label">
+                                <i class="bi bi-lock me-1"></i>Senha
+                            </label>
+                            <div class="input-group">
+                                <input asp-for="Senha" class="form-control" id="senha" placeholder="Mínimo 8 caracteres, maiúscula e caractere especial" />
+                                <button class="btn btn-outline-secondary" type="button" id="toggleSenha" aria-label="Mostrar senha">
+                                    <i class="bi bi-eye" id="iconSenha"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="Senha" class="text-danger"></span>
+                            <div class="form-text">Use pelo menos 8 caracteres, inclua uma letra maiúscula e um caractere especial.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="ConfirmarSenha" class="form-label">
+                                <i class="bi bi-lock-fill me-1"></i>Confirmar Senha
+                            </label>
+                            <div class="input-group">
+                                <input asp-for="ConfirmarSenha" class="form-control" id="confirmar_senha" placeholder="Digite a senha novamente" />
+                                <button class="btn btn-outline-secondary" type="button" id="toggleConfirmarSenha" aria-label="Mostrar senha">
+                                    <i class="bi bi-eye" id="iconConfirmarSenha"></i>
+                                </button>
+                            </div>
+                            <span asp-validation-for="ConfirmarSenha" class="text-danger"></span>
+                            <div class="form-text" id="senhaMatch"></div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input asp-for="Termos" class="form-check-input" id="termos" />
+                            <label class="form-check-label" for="termos">
+                                Eu concordo com os
+                                <a asp-controller="Home" asp-action="Termos" target="_blank" class="text-decoration-none">Termos de Uso</a>
+                                e
+                                <a asp-controller="Home" asp-action="Privacidade" target="_blank" class="text-decoration-none">Política de Privacidade</a>
+                            </label>
+                            <span asp-validation-for="Termos" class="text-danger d-block"></span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-person-plus me-2"></i>Criar Conta
+                        </button>
+                    </form>
+
+                    <div class="divider">ou</div>
+
+                    <div class="auth-footer">
+                        Já tem uma conta?
+                        <a asp-controller="Home" asp-action="Login">Entre aqui</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+@section Scripts {
+    <script src="~/js/registro.js"></script>
+}
