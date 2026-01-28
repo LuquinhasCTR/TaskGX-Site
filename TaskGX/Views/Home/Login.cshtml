@@ -1,0 +1,147 @@
+﻿@{
+    ViewData["Title"] = "Login";
+}
+
+<main>
+    <div class="page-content">
+        <div class="container">
+            <div class="auth-container">
+                <div class="auth-card shadow-lg">
+                    <div class="auth-header text-center mb-4">
+                        <div class="auth-icon mb-3">
+                            <i class="bi bi-box-arrow-in-right"></i>
+                        </div>
+                        <h2>Bem-vindo de volta</h2>
+                        <p class="subtitle">Entre com suas credenciais para acessar sua conta</p>
+                    </div>
+
+                    @* Mensagens de erro / sucesso usando TempData *@
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            @TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle me-2"></i>
+                            @TempData["Success"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @* Formulário: envia para Home/Login (POST). Altere asp-controller se processar em outro controller *@
+                    <form asp-controller="Home" asp-action="Login" method="post" class="needs-validation" novalidate>
+                        @Html.AntiForgeryToken()
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">
+                                <i class="bi bi-envelope me-1"></i>E-mail
+                            </label>
+                            <input
+                                type="email"
+                                class="form-control"
+                                id="email"
+                                name="Email"
+                                placeholder="seu@email.com"
+                                required
+                                autofocus
+                            >
+                            <div class="invalid-feedback">
+                                Por favor, informe um e-mail válido.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="senha" class="form-label">
+                                <i class="bi bi-lock me-1"></i>Senha
+                            </label>
+                            <div class="input-group">
+                                <input
+                                    type="password"
+                                    class="form-control"
+                                    id="senha"
+                                    name="Senha"
+                                    placeholder="Digite sua senha"
+                                    required
+                                >
+                                <button class="btn btn-outline-secondary" type="button" id="toggleSenha" aria-label="Mostrar senha">
+                                    <i class="bi bi-eye" id="iconSenha"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                <a asp-controller="Account" asp-action="ForgotPassword" class="text-decoration-none">
+                                    Esqueceu sua senha?
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input
+                                type="checkbox"
+                                class="form-check-input"
+                                id="lembrar"
+                                name="RememberMe"
+                            >
+                            <label class="form-check-label" for="lembrar">
+                                Lembrar-me
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Entrar
+                        </button>
+                    </form>
+
+                    <div class="divider">ou</div>
+
+                    <div class="auth-footer">
+                        Não tem uma conta?
+                        <a asp-controller="Home" asp-action="Registro">Crie uma conta gratuita</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Bootstrap JS (já incluído no layout; mantenha se necessário) -->
+<script>
+    // Toggle mostrar/ocultar senha
+    document.getElementById('toggleSenha')?.addEventListener('click', function() {
+        const senhaInput = document.getElementById('senha');
+        const iconSenha = document.getElementById('iconSenha');
+
+        if (!senhaInput) return;
+
+        if (senhaInput.type === 'password') {
+            senhaInput.type = 'text';
+            iconSenha.classList.remove('bi-eye');
+            iconSenha.classList.add('bi-eye-slash');
+        } else {
+            senhaInput.type = 'password';
+            iconSenha.classList.remove('bi-eye-slash');
+            iconSenha.classList.add('bi-eye');
+        }
+    });
+
+    // (Opcional) validação de formulário bootstrap
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+</script>
