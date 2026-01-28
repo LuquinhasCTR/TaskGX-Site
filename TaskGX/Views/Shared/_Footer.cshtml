@@ -1,67 +1,4 @@
 ﻿<footer class="footer-modern">
-    <div class="container">
-        <div class="footer-content">
-            <div class="row g-4">
-                <!-- Brand Section -->
-                <div class="col-lg-4 col-md-6 mb-4 mb-lg-0">
-                    <div class="footer-brand">
-                        <div class="footer-logo mb-3">
-                            <i class="bi bi-folder-fill"></i>
-                            <span class="footer-brand-name">TaskGX</span>
-                        </div>
-                        <p class="footer-description">
-                            Gerencie suas tarefas e aumente sua produtividade de forma simples e eficiente. 
-                            Organize seu dia a dia com ferramentas poderosas e intuitivas.
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Navigation Links -->
-                <div class="col-lg-2 col-md-6 mb-4 mb-lg-0">
-                    <h6 class="footer-title">Navegação</h6>
-                    <ul class="footer-nav">
-                        <!-- Exemplo com tag helpers (MVC): -->
-                        <li><a asp-controller="Home" asp-action="Index" class="footer-nav-link"><i class="bi bi-house me-2"></i>Início</a></li>
-                        <li><a asp-controller="Home" asp-action="About" class="footer-nav-link"><i class="bi bi-info-circle me-2"></i>Sobre</a></li>
-
-                        @if (User?.Identity?.IsAuthenticated == true)
-                        {
-                            <li><a asp-controller="Dashboard" asp-action="Index" class="footer-nav-link"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
-                            <li><a asp-controller="Calendar" asp-action="Index" class="footer-nav-link"><i class="bi bi-calendar3 me-2"></i>Calendário</a></li>
-                            <li><a asp-controller="Account" asp-action="Profile" class="footer-nav-link"><i class="bi bi-person-circle me-2"></i>Perfil</a></li>
-                        }
-                        else
-                        {
-                            <li><a asp-controller="Account" asp-action="Login" class="footer-nav-link"><i class="bi bi-box-arrow-in-right me-2"></i>Entrar</a></li>
-                            <li><a asp-controller="Account" asp-action="Register" class="footer-nav-link"><i class="bi bi-person-plus me-2"></i>Criar Conta</a></li>
-                        }
-                    </ul>
-                </div>
-
-                <!-- Features -->
-                <div class="col-lg-3 col-md-6 mb-4 mb-lg-0">
-                    <h6 class="footer-title">Recursos</h6>
-                    <ul class="footer-features">
-                        <li><i class="bi bi-check-circle-fill"></i><span>Listas Personalizadas</span></li>
-                        <li><i class="bi bi-check-circle-fill"></i><span>Sistema de Prioridades</span></li>
-                        <li><i class="bi bi-check-circle-fill"></i><span>Calendário Integrado</span></li>
-                        <li><i class="bi bi-check-circle-fill"></i><span>Tags e Organização</span></li>
-                        <li><i class="bi bi-check-circle-fill"></i><span>Exportação de Dados</span></li>
-                    </ul>
-                </div>
-
-                <!-- Legal & Info -->
-                <div class="col-lg-3 col-md-6">
-                    <h6 class="footer-title">Informações</h6>
-                    <ul class="footer-nav">
-                        <li><a asp-controller="Home" asp-action="Terms" class="footer-nav-link"><i class="bi bi-file-text me-2"></i>Termos de Uso</a></li>
-                        <li><a asp-controller="Home" asp-action="Privacy" class="footer-nav-link"><i class="bi bi-shield-check me-2"></i>Privacidade</a></li>
-                        <li><a asp-controller="Home" asp-action="Help" class="footer-nav-link"><i class="bi bi-question-circle me-2"></i>Ajuda</a></li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
         <!-- Footer Bottom -->
         <div class="footer-bottom">
             <div class="row align-items-center">
@@ -76,7 +13,5 @@
                         <span class="footer-version">v1.0.0</span>
                     </div>
                 </div>
-            </div>
         </div>
-    </div>
 </footer>
