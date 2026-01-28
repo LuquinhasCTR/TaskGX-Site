@@ -29,11 +29,14 @@ else
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthorization();
 
 app.MapStaticAssets();
+
+app.UseStaticFiles();
 
 app.MapControllerRoute(
     name: "default",
@@ -42,5 +45,4 @@ app.MapControllerRoute(
 
 app.MapRazorPages()
    .WithStaticAssets();
-
 app.Run();
