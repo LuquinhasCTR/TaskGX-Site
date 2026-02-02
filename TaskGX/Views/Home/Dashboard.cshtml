@@ -1,0 +1,794 @@
+@model TaskGX.ViewModels.DashboardViewModel
+@using System.Text.Json
+
+@{
+    var sucesso = Model.Sucesso;
+    var erro = Model.Erro;
+    var stats = Model.Stats;
+    var listas = Model.Listas;
+    var prioridades = Model.Prioridades;
+    var tarefas = Model.Tarefas;
+    var listaSelecionada = Model.ListaSelecionada;
+    var listaId = Model.ListaId;
+    var mostrarArquivadas = Model.MostrarArquivadas;
+
+    var usuarioNome = Model.UsuarioNome ?? "Usuário";
+    var nomeParts = usuarioNome.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
+    var primeiroNome = nomeParts.Length > 0 ? nomeParts[0] : usuarioNome;
+    var hoje = System.DateTime.Today;
+}
+
+<main>
+    <div class="page-content">
+        <div class="container-fluid px-3 pt-0 pb-2">
+            @if (!string.IsNullOrWhiteSpace(sucesso))
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="bi bi-check-circle me-2"></i>
+                    @sucesso
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(erro))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    @erro
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            @if (stats.TarefasVencidas > 0)
+            {
+                <div class="alert alert-warning alert-dismissible fade show border-warning" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Atenção!</strong> Você tem <strong>@stats.TarefasVencidas</strong>
+                    @(stats.TarefasVencidas == 1 ? "tarefa vencida" : "tarefas vencidas") que precisam de atenção.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            @if (stats.TarefasHoje > 0)
+            {
+                <div class="alert alert-info alert-dismissible fade show border-info" role="alert">
+                    <i class="bi bi-calendar-event me-2"></i>
+                    <strong>Lembrete:</strong> Você tem <strong>@stats.TarefasHoje</strong>
+                    @(stats.TarefasHoje == 1 ? "tarefa vencendo hoje" : "tarefas vencendo hoje").
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            <!-- Cabeçalho do Dashboard -->
+            <div class="dashboard-header mb-2">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                    <div class="dashboard-welcome">
+                        <h3 class="dashboard-title mb-0" style="font-size: 1.25rem; font-weight: 600;">
+                            <i class="bi bi-speedometer2 me-1 text-primary" style="font-size: 1rem;"></i>
+                            Olá, @primeiroNome!
+                        </h3>
+                    </div>
+                    <div class="d-flex gap-2 flex-shrink-0">
+                        <button type="button" class="btn btn-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovaLista">
+                            <i class="bi bi-plus-circle-fill me-1"></i>Nova Lista
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Cards de Estatísticas -->
+                <div class="row g-2 mb-2">
+                    <div class="col-lg-3 col-md-6 col-sm-6">
+                        <div class="stat-card stat-primary compact">
+                            <div class="stat-icon-wrapper compact">
+                                <i class="bi bi-folder-fill"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h4 class="stat-number compact mb-0">@stats.TotalListas</h4>
+                                <p class="stat-label compact mb-0">Listas</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 col-sm-6">
+                        <div class="stat-card stat-success compact">
+                            <div class="stat-icon-wrapper compact">
+                                <i class="bi bi-check-circle-fill"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h4 class="stat-number compact mb-0">@stats.TarefasConcluidas</h4>
+                                <p class="stat-label compact mb-0">Concluídas</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 col-sm-6">
+                        <div class="stat-card stat-warning compact">
+                            <div class="stat-icon-wrapper compact">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h4 class="stat-number compact mb-0">@stats.TarefasPendentes</h4>
+                                <p class="stat-label compact mb-0">Pendentes</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 col-sm-6">
+                        <div class="stat-card stat-danger compact">
+                            <div class="stat-icon-wrapper compact">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h4 class="stat-number compact mb-0">@stats.TarefasVencidas</h4>
+                                <p class="stat-label compact mb-0">Vencidas</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row" style="min-height: calc(100vh - 150px);">
+                <!-- Coluna de Listas -->
+                <div class="col-lg-3 mb-2 d-flex flex-column">
+                    <div class="card shadow-lg border-0 lists-sidebar flex-grow-1 d-flex flex-column">
+                        <div class="card-header bg-gradient-primary text-white border-0 rounded-top py-1 px-2 flex-shrink-0">
+                            <h6 class="mb-0 fw-semibold d-flex align-items-center" style="font-size: 0.85rem;">
+                                <i class="bi bi-folder-fill me-1" style="font-size: 0.9rem;"></i>Minhas Listas
+                                <span class="badge bg-light text-primary ms-auto" style="font-size: 0.65rem; padding: 0.2rem 0.4rem;">@listas.Count</span>
+                            </h6>
+                        </div>
+                        <div class="card-body p-0 flex-grow-1" style="overflow-y: auto; min-height: 0;">
+                            @if (listas.Count == 0)
+                            {
+                                <div class="p-3 text-center empty-state">
+                                    <div class="empty-icon mb-2">
+                                        <i class="bi bi-folder-plus" style="font-size: 2rem; opacity: 0.3;"></i>
+                                    </div>
+                                    <p class="text-muted mb-2 small">Nenhuma lista criada ainda.</p>
+                                    <button type="button" class="btn btn-primary btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovaLista">
+                                        <i class="bi bi-plus-circle me-1"></i>Criar lista
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="list-group list-group-flush">
+                                    <a href="@Url.Action("Dashboard", "Home")" class="list-group-item list-group-item-action dashboard-nav-item py-2 @(listaId == 0 ? "active" : string.Empty)">
+                                        <div class="d-flex align-items-center">
+                                            <div class="list-icon-wrapper me-2">
+                                                <i class="bi bi-house-fill"></i>
+                                            </div>
+                                            <span class="fw-medium small">Todas as Tarefas</span>
+                                        </div>
+                                    </a>
+                                    @foreach (var lista in listas)
+                                    {
+                                        var listaCor = string.IsNullOrWhiteSpace(lista.Cor) ? string.Empty : lista.Cor;
+                                        <a href="@Url.Action("Dashboard", "Home", new { listaId = lista.ID })"
+                                           class="list-group-item list-group-item-action dashboard-nav-item py-2 @(listaId == lista.ID ? "active" : string.Empty)"
+                                           style="@(string.IsNullOrWhiteSpace(listaCor) ? string.Empty : $"border-left: 3px solid {listaCor};")">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div class="d-flex align-items-center flex-grow-1">
+                                                    <div class="list-icon-wrapper me-2" style="@(string.IsNullOrWhiteSpace(listaCor) ? string.Empty : $"color: {listaCor};")">
+                                                        @if (lista.Favorita == true)
+                                                        {
+                                                            <i class="bi bi-star-fill text-warning" style="font-size: 0.7rem;"></i>
+                                                        }
+                                                        <i class="bi bi-folder-fill"></i>
+                                                    </div>
+                                                    <span class="fw-medium small">@lista.Nome</span>
+                                                </div>
+                                                <div class="d-flex gap-1 list-actions">
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-link text-warning p-1 opacity-75 hover-opacity-100 transition-all"
+                                                            onclick="event.stopPropagation(); favoritarLista(@lista.ID, @(lista.Favorita == true ? 0 : 1))"
+                                                            title="@(lista.Favorita == true ? "Remover dos favoritos" : "Adicionar aos favoritos")">
+                                                        <i class="bi bi-star@(lista.Favorita == true ? "-fill" : string.Empty)"></i>
+                                                    </button>
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-link text-info p-1 opacity-75 hover-opacity-100 transition-all"
+                                                            onclick="event.stopPropagation(); duplicarLista(@lista.ID, @JsonSerializer.Serialize(lista.Nome))"
+                                                            title="Duplicar lista">
+                                                        <i class="bi bi-files"></i>
+                                                    </button>
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-link text-danger p-1 opacity-75 hover-opacity-100 transition-all"
+                                                            onclick="event.stopPropagation(); excluirLista(@lista.ID, @JsonSerializer.Serialize(lista.Nome))"
+                                                            title="Excluir lista">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coluna de Tarefas -->
+                <div class="col-lg-9 d-flex flex-column" style="min-height: calc(100vh - 150px);">
+                    @if (listaSelecionada != null)
+                    {
+                        <!-- Cabeçalho da Lista Selecionada -->
+                        <div class="card mb-1 shadow-sm border-0 lista-header-card overflow-hidden">
+                            <div class="card-header d-flex justify-content-between align-items-center border-0 rounded-top py-1 px-2"
+                                 style="@(string.IsNullOrWhiteSpace(listaSelecionada.Cor) ? "background: linear-gradient(135deg, #0078D4 0%, #106EBE 100%); color: white;" : $"background: linear-gradient(135deg, {listaSelecionada.Cor} 0%, {listaSelecionada.Cor}dd 100%); color: white;")">
+                                <div class="d-flex align-items-center">
+                                    <div class="lista-icon-wrapper me-2" style="width: 28px; height: 28px; font-size: 0.9rem;">
+                                        <i class="bi bi-folder-fill"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0 fw-bold" style="font-size: 0.9rem;">@listaSelecionada.Nome</h6>
+                                        <small class="opacity-90" style="font-size: 0.7rem;">
+                                            <i class="bi bi-list-check me-1"></i>
+                                            @tarefas.Count @(tarefas.Count == 1 ? "tarefa" : "tarefas")
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-1">
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-light btn-sm shadow-sm dropdown-toggle py-1 px-2" data-bs-toggle="dropdown">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-lg">
+                                            <li>
+                                                <a class="dropdown-item" href="@Url.Action("Exportar", "Tarefas", new { formato = "json", listaId = listaSelecionada.ID })">
+                                                    <i class="bi bi-filetype-json me-2"></i>Exportar JSON
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="@Url.Action("Exportar", "Tarefas", new { formato = "csv", listaId = listaSelecionada.ID })">
+                                                    <i class="bi bi-filetype-csv me-2"></i>Exportar CSV
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="duplicarLista(@listaSelecionada.ID, @JsonSerializer.Serialize(listaSelecionada.Nome)); return false;">
+                                                    <i class="bi bi-files me-2"></i>Duplicar Lista
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="#" onclick="favoritarLista(@listaSelecionada.ID, @(listaSelecionada.Favorita == true ? 0 : 1)); return false;">
+                                                    <i class="bi bi-star@(listaSelecionada.Favorita == true ? "-fill" : string.Empty) me-2"></i>
+                                                    @(listaSelecionada.Favorita == true ? "Remover dos Favoritos" : "Adicionar aos Favoritos")
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <button type="button" class="btn btn-light btn-sm shadow-sm fw-semibold py-1 px-2" data-bs-toggle="modal" data-bs-target="#modalNovaTarefa" data-lista-id="@listaSelecionada.ID">
+                                        <i class="bi bi-plus-circle-fill me-1"></i>Nova Tarefa
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Barra de Busca e Filtros -->
+                        <div class="card mb-1 shadow-sm border-0 filters-card">
+                            <div class="card-body p-1">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-5">
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white">
+                                                <i class="bi bi-search"></i>
+                                            </span>
+                                            <input type="text" class="form-control" id="buscaTarefas"
+                                                   placeholder="Buscar tarefas...">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select class="form-select" id="filtroStatus">
+                                            <option value="todas">Todas as tarefas</option>
+                                            <option value="pendentes">Apenas pendentes</option>
+                                            <option value="concluidas">Apenas concluídas</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <select class="form-select" id="filtroPrioridade">
+                                            <option value="todas">Todas as prioridades</option>
+                                            @foreach (var prioridade in prioridades)
+                                            {
+                                                <option value="@prioridade.ID">@prioridade.Nome</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <a href="@Url.Action("Dashboard", "Home", new { listaId, mostrarArquivadas = mostrarArquivadas ? 0 : 1 })"
+                                           class="btn btn-outline-secondary w-100">
+                                            <i class="bi bi-archive@(mostrarArquivadas ? "-fill" : string.Empty) me-1"></i>
+                                            @(mostrarArquivadas ? "Ocultar Arquivadas" : "Mostrar Arquivadas")
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lista de Tarefas -->
+                        <div class="card shadow-lg border-0 tasks-card flex-grow-1 d-flex flex-column">
+                            <div class="card-body p-0 flex-grow-1" style="overflow-y: auto; min-height: 0;">
+                                @if (tarefas.Count == 0)
+                                {
+                                    <div class="text-center text-muted py-5 empty-state">
+                                        <div class="empty-icon mb-3">
+                                            <i class="bi bi-clipboard-check" style="font-size: 4rem; opacity: 0.2;"></i>
+                                        </div>
+                                        <h5 class="mb-2 fw-semibold">Nenhuma tarefa nesta lista ainda</h5>
+                                        <p class="mb-4 text-muted">Comece adicionando sua primeira tarefa!</p>
+                                        <button type="button" class="btn btn-primary btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovaTarefa" data-lista-id="@listaSelecionada.ID">
+                                            <i class="bi bi-plus-circle-fill me-2"></i>Criar primeira tarefa
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="tarefas-list" id="listaTarefas">
+                                        @foreach (var tarefa in tarefas)
+                                        {
+                                            var tituloLower = tarefa.Titulo?.ToLowerInvariant() ?? string.Empty;
+                                            var descricaoLower = tarefa.Descricao?.ToLowerInvariant() ?? string.Empty;
+                                            var prioridadeId = tarefa.PrioridadeId?.ToString() ?? string.Empty;
+                                            <div class="tarefa-item @(tarefa.Concluida ? "tarefa-concluida" : string.Empty) @(tarefa.Arquivada == true ? "tarefa-arquivada" : string.Empty)"
+                                                 data-titulo="@tituloLower"
+                                                 data-descricao="@descricaoLower"
+                                                 data-status="@(tarefa.Concluida ? "concluida" : "pendente")"
+                                                 data-prioridade="@prioridadeId">
+                                                @if (tarefa.Arquivada == true)
+                                                {
+                                                    <div class="p-2 bg-secondary bg-opacity-10 border-bottom">
+                                                        <small class="text-muted d-flex align-items-center">
+                                                            <i class="bi bi-archive-fill me-1"></i>Tarefa Arquivada
+                                                        </small>
+                                                    </div>
+                                                }
+                                                <div class="d-flex align-items-start p-2 tarefa-content-wrapper">
+                                                    <div class="form-check me-3 mt-1 tarefa-checkbox">
+                                                        <input class="form-check-input tarefa-checkbox-input"
+                                                               type="checkbox"
+                                                               checked="@(tarefa.Concluida ? "checked" : null)"
+                                                               onchange="marcarTarefa(@tarefa.ID, this.checked)"
+                                                               style="width: 1.25rem; height: 1.25rem; cursor: pointer;">
+                                                    </div>
+                                                    <div class="flex-grow-1 tarefa-content">
+                                                        <div class="d-flex align-items-start justify-content-between">
+                                                            <div class="flex-grow-1">
+                                                                <h6 class="tarefa-titulo mb-1 @(tarefa.Concluida ? "text-decoration-line-through text-muted" : string.Empty)">
+                                                                    @tarefa.Titulo
+                                                                </h6>
+                                                                @if (!string.IsNullOrWhiteSpace(tarefa.Descricao))
+                                                                {
+                                                                    <p class="tarefa-descricao mb-2 text-muted small @(tarefa.Concluida ? "text-decoration-line-through" : string.Empty)">
+                                                                        @tarefa.Descricao
+                                                                    </p>
+                                                                }
+                                                                <div class="d-flex align-items-center flex-wrap gap-3 tarefa-meta">
+                                                                    @if (!string.IsNullOrWhiteSpace(tarefa.PrioridadeNome))
+                                                                    {
+                                                                        <span class="badge tarefa-prioridade prioridade-@tarefa.PrioridadeNome.ToLowerInvariant()">
+                                                                            <i class="bi bi-flag-fill me-1"></i>
+                                                                            @tarefa.PrioridadeNome
+                                                                        </span>
+                                                                    }
+                                                                    @if (!string.IsNullOrWhiteSpace(tarefa.Tags))
+                                                                    {
+                                                                        var tagsArray = tarefa.Tags.Split(',', System.StringSplitOptions.RemoveEmptyEntries);
+                                                                        <div class="d-flex flex-wrap gap-1 mt-1">
+                                                                            @foreach (var tag in tagsArray)
+                                                                            {
+                                                                                var tagLimpa = tag.Trim();
+                                                                                if (!string.IsNullOrWhiteSpace(tagLimpa))
+                                                                                {
+                                                                                    <span class="badge bg-secondary">
+                                                                                        <i class="bi bi-tag me-1"></i>@tagLimpa
+                                                                                    </span>
+                                                                                }
+                                                                            }
+                                                                        </div>
+                                                                    }
+                                                                    @if (tarefa.DataVencimento.HasValue)
+                                                                    {
+                                                                        var vencimento = tarefa.DataVencimento.Value.Date;
+                                                                        <span class="tarefa-data @(vencimento < hoje && !tarefa.Concluida ? "text-danger fw-bold" : "text-muted")">
+                                                                            <i class="bi bi-calendar-event me-1"></i>
+                                                                            @tarefa.DataVencimento.Value.ToString("dd/MM/yyyy")
+                                                                        </span>
+                                                                    }
+                                                                    <small class="text-muted">
+                                                                        <i class="bi bi-clock me-1"></i>
+                                                                        @tarefa.DataCriacao.ToString("dd/MM/yyyy")
+                                                                    </small>
+                                                                </div>
+                                                            </div>
+                                                            <div class="tarefa-actions ms-3">
+                                                                <div class="btn-group btn-group-sm">
+                                                                    <button type="button" class="btn btn-outline-primary"
+                                                                            onclick="editarTarefa(@tarefa.ID, @JsonSerializer.Serialize(tarefa.Titulo), @JsonSerializer.Serialize(tarefa.Descricao ?? string.Empty), @(tarefa.PrioridadeId?.ToString() ?? "null"), @JsonSerializer.Serialize(tarefa.DataVencimento?.ToString("yyyy-MM-dd") ?? string.Empty), @JsonSerializer.Serialize(tarefa.Tags ?? string.Empty))"
+                                                                            title="Editar tarefa">
+                                                                        <i class="bi bi-pencil"></i>
+                                                                    </button>
+                                                                    <button type="button" class="btn btn-outline-info"
+                                                                            onclick="duplicarTarefa(@tarefa.ID)"
+                                                                            title="Duplicar tarefa">
+                                                                        <i class="bi bi-files"></i>
+                                                                    </button>
+                                                                    <button type="button" class="btn btn-outline-secondary"
+                                                                            onclick="arquivarTarefa(@tarefa.ID, @(tarefa.Arquivada == true ? 0 : 1))"
+                                                                            title="@(tarefa.Arquivada == true ? "Desarquivar tarefa" : "Arquivar tarefa")">
+                                                                        <i class="bi bi-@(tarefa.Arquivada == true ? "archive" : "archive-fill")"></i>
+                                                                    </button>
+                                                                    <button type="button" class="btn btn-outline-danger"
+                                                                            onclick="excluirTarefa(@tarefa.ID, @JsonSerializer.Serialize(tarefa.Titulo))"
+                                                                            title="Excluir tarefa">
+                                                                        <i class="bi bi-trash"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Tela Inicial - Sem Lista Selecionada -->
+                        <div class="card shadow-lg border-0 welcome-empty-state">
+                            <div class="card-body text-center py-5 px-4">
+                                <div class="empty-icon mb-4">
+                                    <i class="bi bi-folder-plus" style="font-size: 5rem; opacity: 0.15;"></i>
+                                </div>
+                                <h3 class="mb-3 fw-bold">Bem-vindo ao seu Dashboard!</h3>
+                                @if (listas.Count == 0)
+                                {
+                                    <p class="text-muted mb-4 fs-5">Crie sua primeira lista para começar</p>
+                                    <button type="button" class="btn btn-primary btn-lg shadow-lg px-4" data-bs-toggle="modal" data-bs-target="#modalNovaLista">
+                                        <i class="bi bi-plus-circle-fill me-2"></i>Criar Primeira Lista
+                                    </button>
+                                }
+                                else
+                                {
+                                    <p class="text-muted mb-4 fs-5">Selecione uma lista ao lado para começar</p>
+                                    <button type="button" class="btn btn-outline-primary btn-lg shadow-lg px-4" data-bs-toggle="modal" data-bs-target="#modalNovaLista">
+                                        <i class="bi bi-plus-circle me-2"></i>Nova Lista
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Modal Nova Lista -->
+<div class="modal fade" id="modalNovaLista" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-controller="Tarefas" asp-action="ProcessarLista" method="post">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-folder-plus me-2"></i>Nova Lista</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="nomeLista" class="form-label">Nome da Lista</label>
+                        <input type="text" class="form-control" id="nomeLista" name="nome" required maxlength="100" placeholder="Ex: Trabalho, Pessoal, Compras...">
+                    </div>
+                    <div class="mb-3">
+                        <label for="corLista" class="form-label">Cor</label>
+                        <input type="color" class="form-control form-control-color" id="corLista" name="cor" value="#0078D4" title="Escolha uma cor">
+                    </div>
+                    <input type="hidden" name="acao" value="criar">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Criar Lista</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nova Tarefa -->
+<div class="modal fade" id="modalNovaTarefa" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form asp-controller="Tarefas" asp-action="ProcessarTarefa" method="post" id="formTarefa">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i><span id="tituloModalTarefa">Nova Tarefa</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="acao" id="acaoTarefa" value="criar">
+                    <input type="hidden" name="tarefa_id" id="tarefa_id">
+                    <input type="hidden" name="lista_id" id="lista_id_tarefa">
+
+                    <div class="mb-3">
+                        <label for="tituloTarefa" class="form-label">Título</label>
+                        <input type="text" class="form-control" id="tituloTarefa" name="titulo" required maxlength="200" placeholder="Digite o título da tarefa">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="descricaoTarefa" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="descricaoTarefa" name="descricao" rows="3" placeholder="Adicione uma descrição (opcional)"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="tagsTarefa" class="form-label">Tags</label>
+                        <input type="text" class="form-control" id="tagsTarefa" name="tags" placeholder="Ex: trabalho, urgente, projeto (separadas por vírgula)">
+                        <small class="form-text text-muted">Separe as tags por vírgula</small>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="prioridadeTarefa" class="form-label">Prioridade</label>
+                            <select class="form-select" id="prioridadeTarefa" name="prioridade_id">
+                                <option value="">Sem prioridade</option>
+                                @foreach (var prioridade in prioridades)
+                                {
+                                    <option value="@prioridade.ID">@prioridade.Nome</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="dataVencimento" class="form-label">Data de Vencimento</label>
+                            <input type="date" class="form-control" id="dataVencimento" name="data_vencimento">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnSalvarTarefa">Criar Tarefa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="lista-id-data" data-lista-id="@(listaId > 0 ? listaId.ToString() : string.Empty)" style="display: none;"></div>
+
+@section Styles {
+    <style>
+        .stat-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            padding: 0.4rem 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-card.compact {
+            padding: 0.4rem 0.5rem;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        .stat-icon-wrapper {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .stat-icon-wrapper.compact {
+            width: 28px;
+            height: 28px;
+        }
+
+        .stat-primary .stat-icon-wrapper {
+            background: linear-gradient(135deg, #0078D4 0%, #106EBE 100%);
+            color: white;
+        }
+
+        .stat-success .stat-icon-wrapper {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .stat-warning .stat-icon-wrapper {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+            color: white;
+        }
+
+        .stat-danger .stat-icon-wrapper {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+
+        .stat-icon-wrapper i {
+            font-size: 0.95rem;
+        }
+
+        .stat-icon-wrapper.compact i {
+            font-size: 0.85rem;
+        }
+
+        .stat-number {
+            font-size: 1.25rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .stat-number.compact {
+            font-size: 1.1rem;
+        }
+
+        .stat-content {
+            flex-grow: 1;
+            min-width: 0;
+        }
+
+        .stat-label {
+            font-size: 0.6rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            opacity: 0.8;
+        }
+
+        .stat-label.compact {
+            font-size: 0.55rem;
+        }
+
+        .dashboard-header {
+            margin-bottom: 0.75rem;
+        }
+
+        .lists-sidebar {
+            border-radius: 12px;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        .lists-sidebar .card-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .bg-gradient-primary {
+            background: linear-gradient(135deg, #0078D4 0%, #106EBE 100%) !important;
+        }
+
+        .list-icon-wrapper {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            background: rgba(0, 120, 212, 0.1);
+            color: #0078D4;
+            font-size: 0.875rem;
+        }
+
+        .dashboard-nav-item.active .list-icon-wrapper {
+            background: #0078D4;
+            color: white;
+        }
+
+        .list-actions {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .dashboard-nav-item:hover .list-actions {
+            opacity: 1;
+        }
+
+        .lista-header-card {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .filters-card {
+            border-radius: 10px;
+        }
+
+        .tasks-card {
+            border-radius: 12px;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tasks-card .card-body {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .tarefa-item {
+            border-bottom: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+            background: var(--bg-primary);
+        }
+
+        .tarefa-item:last-child {
+            border-bottom: none;
+        }
+
+        .tarefa-item:hover {
+            background: var(--bg-secondary);
+            transform: translateX(2px);
+        }
+
+        .tarefa-item.tarefa-concluida {
+            opacity: 0.7;
+        }
+
+        .tarefa-item.tarefa-arquivada {
+            opacity: 0.5;
+            background: var(--bg-tertiary);
+        }
+
+        .tarefa-content-wrapper {
+            transition: all 0.2s ease;
+        }
+
+        .tarefa-checkbox-input {
+            cursor: pointer;
+            width: 1.1rem;
+            height: 1.1rem;
+        }
+
+        .welcome-empty-state {
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(0, 120, 212, 0.03) 0%, rgba(0, 120, 212, 0.01) 100%);
+        }
+
+        .transition-all {
+            transition: all 0.2s ease;
+        }
+
+        .hover-opacity-100:hover {
+            opacity: 1 !important;
+            transform: scale(1.1);
+        }
+
+        .dashboard-header {
+            margin-bottom: 1rem;
+        }
+
+        .page-content {
+            padding-top: 0;
+        }
+
+        .container-fluid {
+            padding-left: 1rem;
+            padding-right: 1rem;
+            padding-top: 0;
+            padding-bottom: 0.5rem;
+        }
+
+        .dashboard-header {
+            margin-bottom: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .row {
+            margin-top: 0;
+        }
+
+        [data-theme="dark"] .welcome-empty-state {
+            background: linear-gradient(135deg, rgba(0, 120, 212, 0.08) 0%, rgba(0, 120, 212, 0.03) 100%);
+        }
+    </style>
+}
+
+@section Scripts {
+    <script src="~/js/dashboard.js"></script>
+}
