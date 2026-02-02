@@ -1,52 +1,40 @@
 ﻿using System;
-using System.Security.Cryptography;
-using System.Text;
-using TaskGX.Dados;
-using TaskGX.Model;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using TaskGX.Data;
+using TaskGX.Models;
+using TaskGX.Tools;
 
-using TaskGX.Ferramentas;
-
-namespace TaskGX.Servicos
+namespace TaskGX.Services
 {
     public class ServicoAutenticacao
     {
         private readonly RepositorioUsuario _usuarioRepository;
 
-        public ServicoAutenticacao()
+        public ServicoAutenticacao(RepositorioUsuario usuarioRepository)
         {
-            _usuarioRepository = new RepositorioUsuario();
+            _usuarioRepository = usuarioRepository;
         }
 
-        // =========================
         // CRIAR CONTA
-        // =========================
-        public bool CriarConta(string nome, string email, string senha, string confirmarSenha)
+        public async Task<(bool Sucesso, string Mensagem)> CriarContaAsync(string nome, string email, string senha, string confirmarSenha)
         {
-            // Campos obrigatórios
-            if (string.IsNullOrWhiteSpace(nome) ||
-                string.IsNullOrWhiteSpace(email) ||
-                string.IsNullOrWhiteSpace(senha) ||
-                string.IsNullOrWhiteSpace(confirmarSenha))
-                return false;
+            if (string.IsNullOrWhiteSpace(nome) || string.IsNullOrWhiteSpace(email) ||
+                string.IsNullOrWhiteSpace(senha) || string.IsNullOrWhiteSpace(confirmarSenha))
+                return (false, "Todos os campos são obrigatórios.");
 
-            // Email simples
-            if (!email.Contains("@"))
-                return false;
+            if (!Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                return (false, "Email inválido.");
 
-            // Senhas iguais
             if (senha != confirmarSenha)
-                return false;
+                return (false, "As senhas não coincidem.");
 
-            // Senha forte
             if (!SenhaValida(senha))
-                return false;
+                return (false, "Senha não atende aos requisitos de segurança.");
 
-            // Verificar se já existe
-            if (_usuarioRepository.ExisteEmail(email))
-                return false;
+            if (await _usuarioRepository.ExisteEmailAsync(email))
+                return (false, "Email já cadastrado.");
 
-            // 🔐 Gerar hash seguro
             string senhaHash = AjudaHash.GerarHashSenha(senha);
 
             Usuarios novoUsuario = new Usuarios
@@ -54,46 +42,34 @@ namespace TaskGX.Servicos
                 Nome = nome,
                 Email = email,
                 Senha = senhaHash,
-                Ativo = true
+                Ativo = true,
+                EmailVerificado = false,
+                CriadoEm = DateTime.Now
             };
 
-            _usuarioRepository.Inserir(novoUsuario);
-            return true;
+            await _usuarioRepository.InserirAsync(novoUsuario);
+            return (true, "Conta criada com sucesso!");
         }
 
-        // =========================
         // LOGIN
-        // =========================
-        public bool Login(string email, string senhaDigitada)
+        public async Task<Usuarios> LoginAsync(string email, string senhaDigitada)
         {
-            Usuarios usuario = _usuarioRepository.ObterPorEmail(email);
+            var usuario = await _usuarioRepository.ObterPorEmailAsync(email);
+            if (usuario == null || !usuario.Ativo)
+                return null;
 
-            if (usuario == null)
-                return false;
+            if (!AjudaHash.VerificarSenha(senhaDigitada, usuario.Senha))
+                return null;
 
-            if (!usuario.Ativo)
-                return false;
-
-            // 🔐 Verificar senha com BCrypt
-            return AjudaHash.VerificarSenha(
-                senhaDigitada,
-                usuario.Senha
-            );
+            return usuario;
         }
 
-        // =========================
-        // VALIDAÇÃO DE SENHA
-        // =========================
         private bool SenhaValida(string senha)
         {
             if (senha.Length < 8)
                 return false;
-
-            // Pelo menos uma letra maiúscula
             if (!Regex.IsMatch(senha, "[A-Z]"))
                 return false;
-
-            // Pelo menos um caractere especial
             if (!Regex.IsMatch(senha, @"[!@#$%^&*(),.?""':{}|<>]"))
                 return false;
 
@@ -101,4 +77,3 @@ namespace TaskGX.Servicos
         }
     }
 }
-
