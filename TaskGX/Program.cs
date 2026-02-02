@@ -1,36 +1,37 @@
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using TaskGX.Data;
-using Dapper;
-using MySqlConnector;
+using TaskGX.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
-
-builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-
-builder.Services.AddDefaultIdentity<IdentityUser>(options =>
-{
-    options.SignIn.RequireConfirmedAccount = true;
-})
-.AddEntityFrameworkStores<ApplicationDbContext>();
-
+// ----------------------------
+// Serviços
+// ----------------------------
 builder.Services.AddControllersWithViews();
 
+// Injeção de dependência
+builder.Services.AddScoped<RepositorioUsuario>();
+builder.Services.AddScoped<RepositorioDashboard>();
+builder.Services.AddScoped<RepositorioTarefas>();
+builder.Services.AddScoped<ServicoAutenticacao>();
+
+// Sessão
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
+// ----------------------------
+// Build da aplicação
+// ----------------------------
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseMigrationsEndPoint();
-}
-else
+// ----------------------------
+// Pipeline
+// ----------------------------
+if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
@@ -40,16 +41,12 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+app.UseSession(); // Sessão precisa vir antes de MapControllerRoute
 
-// Authentication must be enabled before Authorization
-app.UseAuthentication();
-app.UseAuthorization();
-
-// Map routes
+// Mapear rotas
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
-
-app.MapRazorPages();
+    pattern: "{controller=Home}/{action=Login}/{id?}"
+);
 
 app.Run();
