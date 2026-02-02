@@ -8,12 +8,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="Dapper" Version="2.1.66" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="9.0.9" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.9" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.9" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.12" />
+    <PackageReference Include="MySqlConnector" Version="2.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Tools\" />
   </ItemGroup>
 
 </Project>
