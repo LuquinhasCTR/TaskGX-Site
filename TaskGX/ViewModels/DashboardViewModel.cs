@@ -14,7 +14,6 @@ namespace TaskGX.ViewModels
         public IReadOnlyList<Tarefa> Tarefas { get; set; } = new List<Tarefa>();
         public Lista? ListaSelecionada { get; set; }
         public int ListaId { get; set; }
-        public bool MostrarArquivadas { get; set; }
         public DashboardStats Stats { get; set; } = new DashboardStats();
     }
 

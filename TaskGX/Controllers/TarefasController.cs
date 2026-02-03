@@ -70,6 +70,7 @@ namespace TaskGX.Controllers
             DateTime? data_vencimento,
             string tags,
             int? lista_id,
+            int? tarefa_id,
             string acao)
         {
             if (!TryObterUsuarioId(out var usuarioId))
@@ -83,7 +84,8 @@ namespace TaskGX.Controllers
                 return RedirectToAction("Dashboard", "Home", new { listaId = lista_id ?? 0 });
             }
 
-            if (!string.Equals(acao, "criar", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(acao, "criar", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(acao, "editar", StringComparison.OrdinalIgnoreCase))
             {
                 TempData["Error"] = "Ação inválida para tarefa.";
                 return RedirectToAction("Dashboard", "Home", new { listaId = lista_id ?? 0 });
@@ -100,15 +102,37 @@ namespace TaskGX.Controllers
                     listaIdDestino = await _tarefasRepositorio.ObterOuCriarListaPadraoAsync(usuarioId, favoritaExists);
                 }
 
-                await _tarefasRepositorio.CriarTarefaAsync(
-                    listaIdDestino,
-                    titulo.Trim(),
-                    descricao,
-                    prioridade_id,
-                    data_vencimento,
-                    tags);
+                if (string.Equals(acao, "editar", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!tarefa_id.HasValue || tarefa_id.Value <= 0)
+                    {
+                        TempData["Error"] = "Tarefa inválida para edição.";
+                        return RedirectToAction("Dashboard", "Home", new { listaId = lista_id ?? 0 });
+                    }
 
-                TempData["Success"] = "Tarefa criada com sucesso.";
+                    var atualizado = await _tarefasRepositorio.AtualizarTarefaAsync(
+                        tarefa_id.Value,
+                        usuarioId,
+                        titulo.Trim(),
+                        descricao,
+                        prioridade_id,
+                        data_vencimento,
+                        tags);
+
+                    TempData["Success"] = atualizado ? "Tarefa atualizada com sucesso." : "Não foi possível atualizar a tarefa.";
+                }
+                else
+                {
+                    await _tarefasRepositorio.CriarTarefaAsync(
+                        listaIdDestino,
+                        titulo.Trim(),
+                        descricao,
+                        prioridade_id,
+                        data_vencimento,
+                        tags);
+
+                    TempData["Success"] = "Tarefa criada com sucesso.";
+                }
             }
             catch (Exception ex)
             {
@@ -117,6 +141,70 @@ namespace TaskGX.Controllers
             }
 
             return RedirectToAction("Dashboard", "Home", new { listaId = listaIdDestino ?? lista_id ?? 0 });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> MarcarConcluida([FromBody] AtualizarConcluidaRequest request)
+        {
+            if (!TryObterUsuarioId(out var usuarioId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                var atualizado = await _tarefasRepositorio.AtualizarConcluidaAsync(request.TarefaId, usuarioId, request.Concluida);
+                return Json(new { success = atualizado, message = atualizado ? string.Empty : "Não foi possível atualizar a tarefa." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao marcar tarefa.");
+                return BadRequest();
+            }
+        }
+
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Excluir([FromBody] TarefaIdRequest request)
+        {
+            if (!TryObterUsuarioId(out var usuarioId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                var excluida = await _tarefasRepositorio.ExcluirTarefaAsync(request.TarefaId, usuarioId);
+                return Json(new { success = excluida, message = excluida ? string.Empty : "Não foi possível excluir a tarefa." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao excluir tarefa.");
+                return BadRequest();
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Duplicar([FromBody] TarefaIdRequest request)
+        {
+            if (!TryObterUsuarioId(out var usuarioId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
+                var novaId = await _tarefasRepositorio.DuplicarTarefaAsync(request.TarefaId, usuarioId);
+                return Json(new { success = novaId > 0, message = novaId > 0 ? string.Empty : "Não foi possível duplicar a tarefa." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao duplicar tarefa.");
+                return BadRequest();
+            }
         }
 
         [HttpGet]
@@ -136,8 +224,7 @@ namespace TaskGX.Controllers
                     return RedirectToAction("Dashboard", "Home");
                 }
 
-                var arquivadaExists = await _dashboardRepositorio.ColunaExisteAsync("Tarefas", "Arquivada");
-                var tarefas = await _dashboardRepositorio.ObterTarefasPorListaAsync(listaId, arquivadaExists, true);
+                var tarefas = await _dashboardRepositorio.ObterTarefasPorListaAsync(listaId);
 
                 if (string.Equals(formato, "csv", StringComparison.OrdinalIgnoreCase))
                 {
@@ -193,5 +280,9 @@ namespace TaskGX.Controllers
 
             return $"\"{valor.Replace("\"", "\"\"")}\"";
         }
+
+        public sealed record AtualizarConcluidaRequest(int TarefaId, bool Concluida);
+
+        public sealed record TarefaIdRequest(int TarefaId);
     }
 }

@@ -112,6 +112,37 @@ namespace TaskGX.Data
             return tarefas;
         }
 
+        public async Task<(int TotalListas, int TotalTarefas, int TarefasConcluidas)> ObterEstatisticasContaAsync(int usuarioId)
+        {
+            using var conexao = new MySqlConnection(_connectionString);
+            await conexao.OpenAsync();
+
+            const string listasSql = "SELECT COUNT(*) FROM Listas WHERE Usuario_id = @UsuarioId;";
+            using var listasCmd = new MySqlCommand(listasSql, conexao);
+            listasCmd.Parameters.AddWithValue("@UsuarioId", usuarioId);
+            var totalListas = Convert.ToInt32(await listasCmd.ExecuteScalarAsync());
+
+            const string tarefasSql = @"
+                SELECT
+                    COUNT(*) AS Total,
+                    SUM(CASE WHEN Concluida = 1 THEN 1 ELSE 0 END) AS Concluidas
+                FROM Tarefas t
+                INNER JOIN Listas l ON t.Lista_id = l.ID
+                WHERE l.Usuario_id = @UsuarioId;";
+
+            using var tarefasCmd = new MySqlCommand(tarefasSql, conexao);
+            tarefasCmd.Parameters.AddWithValue("@UsuarioId", usuarioId);
+            using var leitor = await tarefasCmd.ExecuteReaderAsync();
+            if (await leitor.ReadAsync())
+            {
+                var totalTarefas = leitor["Total"] != DBNull.Value ? Convert.ToInt32(leitor["Total"]) : 0;
+                var concluidas = leitor["Concluidas"] != DBNull.Value ? Convert.ToInt32(leitor["Concluidas"]) : 0;
+                return (totalListas, totalTarefas, concluidas);
+            }
+
+            return (totalListas, 0, 0);
+        }
+
         public async Task<Lista?> ObterListaAsync(int listaId, int usuarioId, bool favoritaExists)
         {
             using var conexao = new MySqlConnection(_connectionString);
@@ -146,41 +177,17 @@ namespace TaskGX.Data
             };
         }
 
-        public async Task<List<Tarefa>> ObterTarefasPorListaAsync(int listaId, bool arquivadaExists, bool mostrarArquivadas)
+        public async Task<List<Tarefa>> ObterTarefasPorListaAsync(int listaId)
         {
             using var conexao = new MySqlConnection(_connectionString);
             await conexao.OpenAsync();
 
-            var selectArquivada = arquivadaExists ? string.Empty : ", NULL AS Arquivada";
-
-            string sql;
-            if (arquivadaExists && mostrarArquivadas)
-            {
-                sql = $@"
-                    SELECT t.*, p.Nome AS PrioridadeNome{selectArquivada}
-                    FROM Tarefas t
-                    LEFT JOIN Prioridades p ON t.Prioridade_id = p.ID
-                    WHERE t.Lista_id = @ListaId
-                    ORDER BY IFNULL(t.Arquivada, 0) ASC, t.Concluida ASC, t.DataVencimento ASC, t.DataCriacao DESC;";
-            }
-            else if (arquivadaExists && !mostrarArquivadas)
-            {
-                sql = $@"
-                    SELECT t.*, p.Nome AS PrioridadeNome{selectArquivada}
-                    FROM Tarefas t
-                    LEFT JOIN Prioridades p ON t.Prioridade_id = p.ID
-                    WHERE t.Lista_id = @ListaId AND (t.Arquivada = 0 OR t.Arquivada IS NULL)
-                    ORDER BY t.Concluida ASC, t.DataVencimento ASC, t.DataCriacao DESC;";
-            }
-            else
-            {
-                sql = $@"
-                    SELECT t.*, p.Nome AS PrioridadeNome{selectArquivada}
-                    FROM Tarefas t
-                    LEFT JOIN Prioridades p ON t.Prioridade_id = p.ID
-                    WHERE t.Lista_id = @ListaId
-                    ORDER BY t.Concluida ASC, t.DataVencimento ASC, t.DataCriacao DESC;";
-            }
+            const string sql = @"
+                SELECT t.*, p.Nome AS PrioridadeNome
+                FROM Tarefas t
+                LEFT JOIN Prioridades p ON t.Prioridade_id = p.ID
+                WHERE t.Lista_id = @ListaId
+                ORDER BY t.Concluida ASC, t.DataVencimento ASC, t.DataCriacao DESC;";
 
             using var comando = new MySqlCommand(sql, conexao);
             comando.Parameters.AddWithValue("@ListaId", listaId);

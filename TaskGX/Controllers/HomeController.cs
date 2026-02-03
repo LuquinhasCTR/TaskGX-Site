@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using TaskGX.Data;
 using TaskGX.Models;
 using TaskGX.Services;
+using TaskGX.Tools;
+using TaskGX.ViewModels;
 using TaskGX.ViewModels;
 
 namespace TaskGX.Controllers
@@ -14,12 +16,18 @@ namespace TaskGX.Controllers
     {
         private readonly ServicoAutenticacao _authService;
         private readonly RepositorioDashboard _dashboardRepositorio;
+        private readonly RepositorioUsuario _usuarioRepositorio;
         private readonly ILogger<HomeController> _logger;
 
-        public HomeController(ServicoAutenticacao authService, RepositorioDashboard dashboardRepositorio, ILogger<HomeController> logger)
+        public HomeController(
+            ServicoAutenticacao authService,
+            RepositorioDashboard dashboardRepositorio,
+            RepositorioUsuario usuarioRepositorio,
+            ILogger<HomeController> logger)
         {
             _authService = authService;
             _dashboardRepositorio = dashboardRepositorio;
+            _usuarioRepositorio = usuarioRepositorio;
             _logger = logger;
         }
 
@@ -31,7 +39,129 @@ namespace TaskGX.Controllers
         public IActionResult Privacidade() => View();
 
         [HttpGet]
-        public async Task<IActionResult> Dashboard(int? listaId, bool mostrarArquivadas = false, string sucesso = null, string erro = null)
+        public async Task<IActionResult> Perfil()
+        {
+            if (!TryObterUsuarioId(out var usuarioId))
+            {
+                return RedirectToAction("Login");
+            }
+
+            try
+            {
+                var usuario = await _usuarioRepositorio.ObterPorIdAsync(usuarioId);
+                if (usuario == null)
+                {
+                    return RedirectToAction("Logout");
+                }
+
+                var stats = await _dashboardRepositorio.ObterEstatisticasContaAsync(usuarioId);
+                var viewModel = new PerfilViewModel
+                {
+                    Usuario = usuario,
+                    TotalListas = stats.TotalListas,
+                    TotalTarefas = stats.TotalTarefas,
+                    TarefasConcluidas = stats.TarefasConcluidas,
+                    Sucesso = TempData["Success"] as string,
+                    Erro = TempData["Error"] as string
+                };
+
+                return View(viewModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao carregar perfil.");
+                TempData["Error"] = "Erro ao carregar dados. Por favor, tente novamente.";
+                return RedirectToAction("Dashboard");
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AtualizarPerfil(string nome, string email)
+        {
+            if (!TryObterUsuarioId(out var usuarioId))
+            {
+                return RedirectToAction("Login");
+            }
+
+            if (string.IsNullOrWhiteSpace(nome) || string.IsNullOrWhiteSpace(email))
+            {
+                TempData["Error"] = "Nome e email são obrigatórios.";
+                return RedirectToAction("Perfil");
+            }
+
+            try
+            {
+                if (await _usuarioRepositorio.ExisteEmailOutroAsync(usuarioId, email))
+                {
+                    TempData["Error"] = "Email já cadastrado.";
+                    return RedirectToAction("Perfil");
+                }
+
+                await _usuarioRepositorio.AtualizarDadosAsync(usuarioId, nome.Trim(), email.Trim());
+                HttpContext.Session.SetString("UsuarioNome", nome.Trim());
+                TempData["Success"] = "Dados atualizados com sucesso.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao atualizar perfil.");
+                TempData["Error"] = "Erro ao atualizar dados.";
+            }
+
+            return RedirectToAction("Perfil");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AlterarSenha(string senha_atual, string nova_senha, string confirmar_nova_senha)
+        {
+            if (!TryObterUsuarioId(out var usuarioId))
+            {
+                return RedirectToAction("Login");
+            }
+
+            if (string.IsNullOrWhiteSpace(senha_atual) || string.IsNullOrWhiteSpace(nova_senha) || string.IsNullOrWhiteSpace(confirmar_nova_senha))
+            {
+                TempData["Error"] = "Preencha todos os campos de senha.";
+                return RedirectToAction("Perfil");
+            }
+
+            if (!string.Equals(nova_senha, confirmar_nova_senha, StringComparison.Ordinal))
+            {
+                TempData["Error"] = "As senhas não coincidem.";
+                return RedirectToAction("Perfil");
+            }
+
+            if (!SenhaValida(nova_senha))
+            {
+                TempData["Error"] = "Senha não atende aos requisitos de segurança.";
+                return RedirectToAction("Perfil");
+            }
+
+            try
+            {
+                var usuario = await _usuarioRepositorio.ObterPorIdAsync(usuarioId);
+                if (usuario == null || !AjudaHash.VerificarSenha(senha_atual, usuario.Senha))
+                {
+                    TempData["Error"] = "Senha atual inválida.";
+                    return RedirectToAction("Perfil");
+                }
+
+                var novaHash = AjudaHash.GerarHashSenha(nova_senha);
+                await _usuarioRepositorio.AtualizarSenhaAsync(usuarioId, novaHash);
+                TempData["Success"] = "Senha atualizada com sucesso.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao alterar senha.");
+                TempData["Error"] = "Erro ao alterar senha.";
+            }
+
+            return RedirectToAction("Perfil");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Dashboard(int? listaId, string sucesso = null, string erro = null)
         {
             var usuarioIdValue = HttpContext.Session.GetString("UsuarioID");
             if (!int.TryParse(usuarioIdValue, out var usuarioId))
@@ -96,13 +226,10 @@ namespace TaskGX.Controllers
                     var listaSelecionada = await _dashboardRepositorio.ObterListaAsync(listaId.Value, usuarioId, favoritaExists);
                     if (listaSelecionada != null)
                     {
-                        var arquivadaExists = await _dashboardRepositorio.ColunaExisteAsync("Tarefas", "Arquivada");
-                        var mostrarArquivadasEfetivo = mostrarArquivadas && arquivadaExists;
-                        var tarefas = await _dashboardRepositorio.ObterTarefasPorListaAsync(listaId.Value, arquivadaExists, mostrarArquivadasEfetivo);
+                        var tarefas = await _dashboardRepositorio.ObterTarefasPorListaAsync(listaId.Value);
 
                         viewModel.ListaSelecionada = listaSelecionada;
                         viewModel.Tarefas = tarefas;
-                        viewModel.MostrarArquivadas = mostrarArquivadasEfetivo;
                     }
                 }
             }
@@ -190,6 +317,32 @@ namespace TaskGX.Controllers
         {
             HttpContext.Session.Clear();
             return RedirectToAction("Login");
+        }
+
+        private bool TryObterUsuarioId(out int usuarioId)
+        {
+            var usuarioIdValue = HttpContext.Session.GetString("UsuarioID");
+            return int.TryParse(usuarioIdValue, out usuarioId);
+        }
+
+        private static bool SenhaValida(string senha)
+        {
+            if (senha.Length < 8)
+            {
+                return false;
+            }
+
+            if (!System.Text.RegularExpressions.Regex.IsMatch(senha, "[A-Z]"))
+            {
+                return false;
+            }
+
+            if (!System.Text.RegularExpressions.Regex.IsMatch(senha, @"[!@#$%^&*(),.?""':{}|<>]"))
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }
