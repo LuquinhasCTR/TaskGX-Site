@@ -851,7 +851,14 @@ main {
 
 .auth-header {
     margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
+
+    .auth-header.text-center {
+        text-align: center;
+    }
 
 .auth-icon {
     width: 80px;
@@ -891,8 +898,9 @@ main {
 .auth-card .subtitle {
     color: var(--text-secondary);
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 0;
     font-size: 0.9375rem;
+    line-height: 1.5;
 }
 
 .form-label {
@@ -900,7 +908,17 @@ main {
     color: var(--text-primary);
     margin-bottom: 0.5rem;
     font-size: 0.9375rem;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
 }
+
+    .form-label i {
+        display: inline-flex;
+        align-items: center;
+        font-size: 1rem;
+        line-height: 1;
+    }
 
 .form-control {
     border: 1px solid var(--border-color);
@@ -910,6 +928,8 @@ main {
     color: var(--text-primary);
     transition: all 0.2s ease;
     background-color: var(--bg-primary);
+    width: 100%;
+    box-sizing: border-box;
 }
 
     .form-control:focus {
@@ -922,10 +942,47 @@ main {
         color: var(--text-tertiary);
     }
 
+    /* Manter alinhamento mesmo com validação */
+    .form-control.is-invalid,
+    .form-control.is-valid,
+    .was-validated .form-control:invalid,
+    .was-validated .form-control:valid {
+        padding: 0.625rem 0.875rem;
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+.text-danger {
+    display: block;
+    margin-top: 0.375rem;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+}
+
+/* Manter alinhamento das mensagens de validação */
+.invalid-feedback,
+.valid-feedback {
+    display: block;
+    margin-top: 0.375rem;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    width: 100%;
+}
+
+/* Alinhamento para campos com validação no input-group */
+.input-group ~ .invalid-feedback,
+.input-group ~ .valid-feedback {
+    margin-top: 0.375rem;
+    display: block;
+}
+
 .form-text {
     font-size: 0.8125rem;
     color: var(--text-secondary);
-    margin-top: 0.25rem;
+    margin-top: 0.375rem;
+    display: block;
+    line-height: 1.4;
 }
 
 .btn-primary {
@@ -999,7 +1056,20 @@ main {
     margin-bottom: 1.5rem;
     font-size: 0.9375rem;
     border: 1px solid;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
+
+    .alert .btn-close {
+        margin-left: auto;
+        flex-shrink: 0;
+    }
+
+    .alert i {
+        flex-shrink: 0;
+        font-size: 1.125rem;
+    }
 
 .alert-danger {
     background-color: #FEF6F6;
@@ -1405,13 +1475,42 @@ main {
     }
 
 /* Melhorias nos checkboxes */
+.form-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
 .form-check-input {
     cursor: pointer;
     transition: all 0.2s ease;
+    margin-top: 0.25rem;
+    flex-shrink: 0;
 }
 
     .form-check-input:hover {
         transform: scale(1.1);
+    }
+
+    /* Manter alinhamento mesmo com validação */
+    .form-check-input.is-invalid,
+    .form-check-input.is-valid,
+    .was-validated .form-check-input:invalid,
+    .was-validated .form-check-input:valid {
+        margin-top: 0.25rem;
+        flex-shrink: 0;
+    }
+
+.form-check-label {
+    flex: 1;
+    line-height: 1.5;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.25rem;
+}
+
+    .form-check-label a {
+        display: inline;
     }
 
 /* Responsividade melhorada */
@@ -1846,13 +1945,44 @@ main {
     border-radius: 8px 0 0 8px;
 }
 
-.input-group .form-control {
-    border-radius: 0 8px 8px 0;
+.input-group {
+    display: flex;
+    align-items: stretch;
 }
+
+    .input-group .form-control {
+        border-radius: 0 8px 8px 0;
+        flex: 1;
+        width: auto;
+    }
 
     .input-group .form-control:focus {
         border-left: none;
     }
+
+    /* Manter alinhamento mesmo com validação nos input-groups */
+    .input-group .form-control.is-invalid,
+    .input-group .form-control.is-valid,
+    .was-validated .input-group .form-control:invalid,
+    .was-validated .input-group .form-control:valid {
+        flex: 1;
+        width: auto;
+        padding: 0.625rem 0.875rem;
+    }
+
+    .input-group .btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.625rem 0.875rem;
+        border-left: none;
+        border-radius: 0 4px 4px 0;
+    }
+
+        .input-group .btn i {
+            font-size: 1rem;
+            line-height: 1;
+        }
 
 /* Melhorias nos selects */
 .form-select {
@@ -2538,3 +2668,33 @@ select:focus {
         border-color: var(--text-primary) !important;
         color: var(--text-primary) !important;
     }
+.dashboard-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dashboard-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* filtros */
+.dashboard-filters {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.filter-left {
+    flex: 1;
+    max-width: 420px;
+}
+
+.filter-right {
+    display: flex;
+    gap: 12px;
+}
