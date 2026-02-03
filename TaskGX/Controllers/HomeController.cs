@@ -46,6 +46,37 @@ namespace TaskGX.Controllers
         public IActionResult Termos() => View();
         public IActionResult Privacidade() => View();
         public IActionResult Sobre() => View();
+        [HttpGet]
+        public async Task<IActionResult> Calendario()
+        {
+            if (!TryObterUsuarioId(out var usuarioId))
+            {
+                return RedirectToAction("Login");
+            }
+
+            try
+            {
+                var favoritaExists = await _dashboardRepositorio.ColunaExisteAsync("Listas", "Favorita");
+                var listas = await _dashboardRepositorio.ObterListasAsync(usuarioId, favoritaExists);
+                var prioridades = await _dashboardRepositorio.ObterPrioridadesAsync();
+                var tarefas = await _dashboardRepositorio.ObterTarefasUsuarioAsync(usuarioId);
+
+                var viewModel = new CalendarioViewModel
+                {
+                    Listas = listas,
+                    Prioridades = prioridades,
+                    Tarefas = tarefas
+                };
+
+                return View(viewModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao carregar calendário.");
+                TempData["Error"] = "Erro ao carregar calendário.";
+                return RedirectToAction("Dashboard");
+            }
+        }
 
         [HttpGet]
         public async Task<IActionResult> Perfil()

@@ -1,0 +1,172 @@
+﻿@model TaskGX.ViewModels.CalendarioViewModel
+@using System.Text.Json
+@using System.Linq
+
+@{
+    ViewData["Title"] = "Calendário";
+}
+
+<main>
+    <div class="page-content">
+        <div class="container-fluid px-4 pt-4 pb-4">
+            <!-- Cabeçalho do Calendário -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="dashboard-title mb-1">
+                        <i class="bi bi-calendar3 me-2 text-primary"></i>
+                        Calendário de Tarefas
+                    </h1>
+                    <p class="dashboard-subtitle mb-0">
+                        Visualize suas tarefas organizadas por data
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a class="btn btn-outline-primary" asp-controller="Home" asp-action="Dashboard">
+                        <i class="bi bi-arrow-left me-2"></i>Voltar ao Dashboard
+                    </a>
+                    <button type="button" class="btn btn-primary" id="btnExportarGoogle" onclick="exportarGoogleCalendar(event)">
+                        <i class="bi bi-google me-2"></i>Exportar para Google Calendar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card mb-4 shadow-sm border-0">
+                <div class="card-body p-3">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Filtrar por Lista</label>
+                            <select class="form-select" id="filtroLista">
+                                <option value="">Todas as listas</option>
+                                @foreach (var lista in Model.Listas)
+                                {
+                                    <option value="@lista.ID">@lista.Nome</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Filtrar por Prioridade</label>
+                            <select class="form-select" id="filtroPrioridade">
+                                <option value="">Todas as prioridades</option>
+                                @foreach (var prioridade in Model.Prioridades)
+                                {
+                                    <option value="@prioridade.ID">@prioridade.Nome</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="mostrarConcluidas" checked>
+                                <label class="form-check-label" for="mostrarConcluidas">
+                                    Mostrar tarefas concluídas
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendário -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Modal de Detalhes da Tarefa -->
+<div class="modal fade" id="modalTarefaCalendario" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTarefaTitulo"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalTarefaConteudo">
+                <!-- Conteúdo será preenchido via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <a href="#" id="linkEditarTarefa" class="btn btn-primary">
+                    <i class="bi bi-pencil me-1"></i>Editar Tarefa
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet" />
+    <style>
+        #calendar {
+            font-family: 'Inter', sans-serif;
+            max-height: 65vh;
+        }
+
+        .fc {
+            font-size: 0.85rem;
+        }
+
+        .fc-event {
+            cursor: pointer;
+            border-radius: 4px;
+            padding: 2px 4px;
+        }
+
+            .fc-event:hover {
+                opacity: 0.8;
+            }
+
+        .fc-day-today {
+            background-color: rgba(0, 120, 212, 0.1) !important;
+        }
+
+        [data-theme="dark"] #calendar {
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .fc-theme-standard td,
+        [data-theme="dark"] .fc-theme-standard th {
+            border-color: var(--border-color);
+        }
+
+        [data-theme="dark"] .fc-col-header-cell {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .fc-daygrid-day {
+            background-color: var(--bg-primary);
+        }
+
+            [data-theme="dark"] .fc-daygrid-day:hover {
+                background-color: var(--bg-secondary);
+            }
+    </style>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/pt-br.js"></script>
+    <script>
+        window.calendarData = @Html.Raw(JsonSerializer.Serialize(new
+        {
+            tarefas = Model.Tarefas.Select(t => new
+            {
+                id = t.ID,
+                titulo = t.Titulo,
+                descricao = t.Descricao,
+                listaId = t.ListaId,
+                prioridadeId = t.PrioridadeId,
+                prioridadeNome = t.PrioridadeNome,
+                concluida = t.Concluida,
+                dataVencimento = t.DataVencimento,
+                dataCriacao = t.DataCriacao
+            })
+        }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
+    </script>
+    <script src="~/js/calendario.js" asp-append-version="true"></script>
+}
+
