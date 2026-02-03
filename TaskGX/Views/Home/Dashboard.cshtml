@@ -10,7 +10,6 @@
     var tarefas = Model.Tarefas;
     var listaSelecionada = Model.ListaSelecionada;
     var listaId = Model.ListaId;
-    var mostrarArquivadas = Model.MostrarArquivadas;
 
     var usuarioNome = Model.UsuarioNome ?? "Usuário";
     var nomeParts = usuarioNome.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
@@ -290,13 +289,7 @@
                                             }
                                         </select>
                                     </div>
-                                    <div class="col-md-2">
-                                        <a href="@Url.Action("Dashboard", "Home", new { listaId, mostrarArquivadas = mostrarArquivadas ? 0 : 1 })"
-                                           class="btn btn-outline-secondary w-100">
-                                            <i class="bi bi-archive@(mostrarArquivadas ? "-fill" : string.Empty) me-1"></i>
-                                            @(mostrarArquivadas ? "Ocultar Arquivadas" : "Mostrar Arquivadas")
-                                        </a>
-                                    </div>
+                                    <div class="col-md-2"></div>
                                 </div>
                             </div>
                         </div>
@@ -407,11 +400,6 @@
                                                                             onclick="duplicarTarefa(@tarefa.ID)"
                                                                             title="Duplicar tarefa">
                                                                         <i class="bi bi-files"></i>
-                                                                    </button>
-                                                                    <button type="button" class="btn btn-outline-secondary"
-                                                                            onclick="arquivarTarefa(@tarefa.ID, @(tarefa.Arquivada == true ? 0 : 1))"
-                                                                            title="@(tarefa.Arquivada == true ? "Desarquivar tarefa" : "Arquivar tarefa")">
-                                                                        <i class="bi bi-@(tarefa.Arquivada == true ? "archive" : "archive-fill")"></i>
                                                                     </button>
                                                                     <button type="button" class="btn btn-outline-danger"
                                                                             onclick="excluirTarefa(@tarefa.ID, @JsonSerializer.Serialize(tarefa.Titulo))"
@@ -549,6 +537,9 @@
 </div>
 
 <div id="lista-id-data" data-lista-id="@(listaId > 0 ? listaId.ToString() : string.Empty)" style="display: none;"></div>
+<form id="antiForgeryForm" method="post" style="display: none;">
+    @Html.AntiForgeryToken()
+</form>
 
 @section Styles {
     <style>
@@ -694,8 +685,55 @@
             overflow: hidden;
         }
 
+        .lista-header-card .card-header {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+
+        .lista-header-card .card-header > .d-flex:first-child {
+            flex: 1 1 220px;
+        }
+
+        .lista-header-card .card-header > .d-flex.gap-1 {
+            flex: 0 0 auto;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: flex-start;
+        }
+
+        @@media (max-width: 576px) {
+            .lista-header-card .card-header > .d-flex.gap-1 {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+
         .filters-card {
             border-radius: 10px;
+        }
+
+        .filters-card .input-group,
+        .filters-card .form-select,
+        .filters-card .form-control,
+        .filters-card .input-group-text {
+            height: 2.5rem;
+        }
+
+        .filters-card .input-group-text {
+            display: flex;
+            align-items: center;
+            vertical-align: central;
+        }
+
+        .filters-card .row {
+            align-items: center;
+        }
+
+        .filters-card .form-control,
+        .filters-card .form-select {
+            display: flex;
+            align-items: center;
         }
 
         .tasks-card {
