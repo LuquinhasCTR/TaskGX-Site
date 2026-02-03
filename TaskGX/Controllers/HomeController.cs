@@ -45,6 +45,7 @@ namespace TaskGX.Controllers
         }
         public IActionResult Termos() => View();
         public IActionResult Privacidade() => View();
+        public IActionResult Sobre() => View();
 
         [HttpGet]
         public async Task<IActionResult> Perfil()
