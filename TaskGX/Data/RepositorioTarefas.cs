@@ -89,5 +89,100 @@ namespace TaskGX.Data
 
             return comando.LastInsertedId > 0 ? Convert.ToInt32(comando.LastInsertedId) : 0;
         }
+
+        public async Task<bool> AtualizarTarefaAsync(int tarefaId, int usuarioId, string titulo, string? descricao, int? prioridadeId, DateTime? dataVencimento, string? tags)
+        {
+            using var conexao = new MySqlConnection(_connectionString);
+            await conexao.OpenAsync();
+
+            const string sql = @"
+                UPDATE Tarefas t
+                INNER JOIN Listas l ON t.Lista_id = l.ID
+                SET t.Titulo = @Titulo,
+                    t.Descricao = @Descricao,
+                    t.Prioridade_id = @PrioridadeId,
+                    t.DataVencimento = @DataVencimento,
+                    t.Tags = @Tags
+                WHERE t.ID = @TarefaId AND l.Usuario_id = @UsuarioId;";
+
+            using var comando = new MySqlCommand(sql, conexao);
+            comando.Parameters.AddWithValue("@Titulo", titulo);
+            comando.Parameters.AddWithValue("@Descricao", string.IsNullOrWhiteSpace(descricao) ? DBNull.Value : descricao);
+            comando.Parameters.AddWithValue("@PrioridadeId", prioridadeId.HasValue ? prioridadeId.Value : DBNull.Value);
+            comando.Parameters.AddWithValue("@DataVencimento", dataVencimento.HasValue ? dataVencimento.Value : DBNull.Value);
+            comando.Parameters.AddWithValue("@Tags", string.IsNullOrWhiteSpace(tags) ? DBNull.Value : tags);
+            comando.Parameters.AddWithValue("@TarefaId", tarefaId);
+            comando.Parameters.AddWithValue("@UsuarioId", usuarioId);
+
+            return await comando.ExecuteNonQueryAsync() > 0;
+        }
+
+        public async Task<bool> AtualizarConcluidaAsync(int tarefaId, int usuarioId, bool concluida)
+        {
+            using var conexao = new MySqlConnection(_connectionString);
+            await conexao.OpenAsync();
+
+            const string sql = @"
+                UPDATE Tarefas t
+                INNER JOIN Listas l ON t.Lista_id = l.ID
+                SET t.Concluida = @Concluida
+                WHERE t.ID = @TarefaId AND l.Usuario_id = @UsuarioId;";
+
+            using var comando = new MySqlCommand(sql, conexao);
+            comando.Parameters.AddWithValue("@Concluida", concluida ? 1 : 0);
+            comando.Parameters.AddWithValue("@TarefaId", tarefaId);
+            comando.Parameters.AddWithValue("@UsuarioId", usuarioId);
+
+            return await comando.ExecuteNonQueryAsync() > 0;
+        }
+
+
+        public async Task<bool> ExcluirTarefaAsync(int tarefaId, int usuarioId)
+        {
+            using var conexao = new MySqlConnection(_connectionString);
+            await conexao.OpenAsync();
+
+            const string sql = @"
+                DELETE t
+                FROM Tarefas t
+                INNER JOIN Listas l ON t.Lista_id = l.ID
+                WHERE t.ID = @TarefaId AND l.Usuario_id = @UsuarioId;";
+
+            using var comando = new MySqlCommand(sql, conexao);
+            comando.Parameters.AddWithValue("@TarefaId", tarefaId);
+            comando.Parameters.AddWithValue("@UsuarioId", usuarioId);
+
+            return await comando.ExecuteNonQueryAsync() > 0;
+        }
+
+        public async Task<int> DuplicarTarefaAsync(int tarefaId, int usuarioId)
+        {
+            using var conexao = new MySqlConnection(_connectionString);
+            await conexao.OpenAsync();
+
+            const string sql = @"
+                INSERT INTO Tarefas (Lista_id, Titulo, Descricao, Prioridade_id, DataVencimento, Tags, Concluida, DataCriacao)
+                SELECT t.Lista_id,
+                       CONCAT(t.Titulo, ' (Cópia)'),
+                       t.Descricao,
+                       t.Prioridade_id,
+                       t.DataVencimento,
+                       t.Tags,
+                       0,
+                       @DataCriacao
+                FROM Tarefas t
+                INNER JOIN Listas l ON t.Lista_id = l.ID
+                WHERE t.ID = @TarefaId AND l.Usuario_id = @UsuarioId;";
+
+            using var comando = new MySqlCommand(sql, conexao);
+            comando.Parameters.AddWithValue("@TarefaId", tarefaId);
+            comando.Parameters.AddWithValue("@UsuarioId", usuarioId);
+            comando.Parameters.AddWithValue("@DataCriacao", DateTime.Now);
+
+            await comando.ExecuteNonQueryAsync();
+
+            return comando.LastInsertedId > 0 ? Convert.ToInt32(comando.LastInsertedId) : 0;
+        }
+
     }
 }

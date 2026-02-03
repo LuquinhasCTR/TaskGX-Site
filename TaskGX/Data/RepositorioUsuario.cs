@@ -60,6 +60,53 @@ namespace TaskGX.Data
             };
         }
 
+        public async Task<Usuarios> ObterPorIdAsync(int usuarioId)
+        {
+            using var conexao = new MySqlConnection(_connectionString);
+            await conexao.OpenAsync();
+
+            const string sql = @"
+                SELECT 
+                    ID,
+                    Nome,
+                    Email,
+                    Senha,
+                    Avatar,
+                    Ativo,
+                    EmailVerificado,
+                    CodigoVerificacao,
+                    CodigoVerificacaoExpiracao,
+                    Criado_em,
+                    DataAtualizacao
+                FROM Usuarios
+                WHERE ID = @UsuarioId
+                LIMIT 1;";
+
+            using var comando = new MySqlCommand(sql, conexao);
+            comando.Parameters.AddWithValue("@UsuarioId", usuarioId);
+
+            using var leitor = await comando.ExecuteReaderAsync();
+            if (!await leitor.ReadAsync())
+            {
+                return null;
+            }
+
+            return new Usuarios
+            {
+                ID = leitor["ID"] != DBNull.Value ? Convert.ToInt32(leitor["ID"]) : 0,
+                Nome = leitor["Nome"] as string,
+                Email = leitor["Email"] as string,
+                Senha = leitor["Senha"] as string,
+                Avatar = leitor["Avatar"] != DBNull.Value ? leitor["Avatar"].ToString() : null,
+                Ativo = leitor["Ativo"] != DBNull.Value ? Convert.ToBoolean(leitor["Ativo"]) : true,
+                EmailVerificado = leitor["EmailVerificado"] != DBNull.Value ? Convert.ToBoolean(leitor["EmailVerificado"]) : false,
+                CodigoVerificacao = leitor["CodigoVerificacao"] != DBNull.Value ? leitor["CodigoVerificacao"].ToString() : null,
+                CodigoVerificacaoExpiracao = leitor["CodigoVerificacaoExpiracao"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(leitor["CodigoVerificacaoExpiracao"]) : null,
+                CriadoEm = leitor["Criado_em"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(leitor["Criado_em"]) : null,
+                DataAtualizacao = leitor["DataAtualizacao"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(leitor["DataAtualizacao"]) : null
+            };
+        }
+
         public async Task<bool> ExisteEmailAsync(string email)
         {
             using var conexao = new MySqlConnection(_connectionString);
@@ -72,6 +119,61 @@ namespace TaskGX.Data
 
             var result = await cmd.ExecuteScalarAsync();
             return Convert.ToInt64(result) > 0;
+        }
+
+        public async Task<bool> ExisteEmailOutroAsync(int usuarioId, string email)
+        {
+            using var conexao = new MySqlConnection(_connectionString);
+            await conexao.OpenAsync();
+
+            const string sql = "SELECT COUNT(1) FROM Usuarios WHERE Email = @Email AND ID <> @UsuarioId;";
+
+            using var cmd = new MySqlCommand(sql, conexao);
+            cmd.Parameters.AddWithValue("@Email", email);
+            cmd.Parameters.AddWithValue("@UsuarioId", usuarioId);
+
+            var result = await cmd.ExecuteScalarAsync();
+            return Convert.ToInt64(result) > 0;
+        }
+
+        public async Task AtualizarDadosAsync(int usuarioId, string nome, string email)
+        {
+            using var conexao = new MySqlConnection(_connectionString);
+            await conexao.OpenAsync();
+
+            const string sql = @"
+                UPDATE Usuarios
+                SET Nome = @Nome,
+                    Email = @Email,
+                    DataAtualizacao = @DataAtualizacao
+                WHERE ID = @UsuarioId;";
+
+            using var comando = new MySqlCommand(sql, conexao);
+            comando.Parameters.AddWithValue("@Nome", nome);
+            comando.Parameters.AddWithValue("@Email", email);
+            comando.Parameters.AddWithValue("@DataAtualizacao", DateTime.Now);
+            comando.Parameters.AddWithValue("@UsuarioId", usuarioId);
+
+            await comando.ExecuteNonQueryAsync();
+        }
+
+        public async Task AtualizarSenhaAsync(int usuarioId, string senhaHash)
+        {
+            using var conexao = new MySqlConnection(_connectionString);
+            await conexao.OpenAsync();
+
+            const string sql = @"
+                UPDATE Usuarios
+                SET Senha = @Senha,
+                    DataAtualizacao = @DataAtualizacao
+                WHERE ID = @UsuarioId;";
+
+            using var comando = new MySqlCommand(sql, conexao);
+            comando.Parameters.AddWithValue("@Senha", senhaHash);
+            comando.Parameters.AddWithValue("@DataAtualizacao", DateTime.Now);
+            comando.Parameters.AddWithValue("@UsuarioId", usuarioId);
+
+            await comando.ExecuteNonQueryAsync();
         }
 
         public async Task InserirAsync(Usuarios usuario)
