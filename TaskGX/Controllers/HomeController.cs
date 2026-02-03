@@ -34,7 +34,15 @@ namespace TaskGX.Controllers
         // =========================
         // Páginas comuns
         // =========================
-        public IActionResult Index() => View();
+        public IActionResult Index()
+        {
+            if (TryObterUsuarioId(out _))
+            {
+                return RedirectToAction("Dashboard");
+            }
+
+            return View();
+        }
         public IActionResult Termos() => View();
         public IActionResult Privacidade() => View();
 
