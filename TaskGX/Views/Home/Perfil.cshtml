@@ -1,0 +1,235 @@
+@model TaskGX.ViewModels.PerfilViewModel
+
+@{
+    var sucesso = Model.Sucesso;
+    var erro = Model.Erro;
+    var usuario = Model.Usuario;
+}
+
+<main>
+    <div class="page-content">
+        <div class="container py-4">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    @if (!string.IsNullOrWhiteSpace(sucesso))
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle me-2"></i>
+                            @sucesso
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(erro))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            @erro
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-body text-center py-4">
+                            <div class="profile-avatar mb-3">
+                                <div class="avatar-circle">
+                                    <i class="bi bi-person-fill"></i>
+                                </div>
+                            </div>
+                            <h2 class="mb-1">@usuario.Nome</h2>
+                            <p class="text-muted mb-0">@usuario.Email</p>
+                            <small class="text-muted">
+                                Membro desde @(usuario.CriadoEm?.ToString("dd/MM/yyyy") ?? "-")
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-primary text-white border-0">
+                            <h5 class="mb-0">
+                                <i class="bi bi-person-gear me-2"></i>Informações Pessoais
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form asp-action="AtualizarPerfil" method="post">
+                                <div class="mb-3">
+                                    <label for="nome" class="form-label">Nome Completo</label>
+                                    <input type="text" class="form-control" id="nome" name="nome"
+                                           value="@usuario.Nome" required maxlength="100">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">E-mail</label>
+                                    <input type="email" class="form-control" id="email" name="email"
+                                           value="@usuario.Email" required maxlength="150">
+                                </div>
+
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-save me-2"></i>Salvar Alterações
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-warning text-dark border-0">
+                            <h5 class="mb-0">
+                                <i class="bi bi-shield-lock me-2"></i>Alterar Senha
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form asp-action="AlterarSenha" method="post" id="formSenha">
+                                <div class="mb-3">
+                                    <label for="senha_atual" class="form-label">Senha Atual</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="senha_atual" name="senha_atual"
+                                               required placeholder="Digite sua senha atual">
+                                        <button class="btn btn-outline-secondary" type="button" id="toggleSenhaAtual" aria-label="Mostrar senha">
+                                            <i class="bi bi-eye" id="iconSenhaAtual"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="nova_senha" class="form-label">Nova Senha</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="nova_senha" name="nova_senha"
+                                               required minlength="8"
+                                               placeholder="Mínimo 8 caracteres, maiúscula e caractere especial">
+                                        <button class="btn btn-outline-secondary" type="button" id="toggleNovaSenha" aria-label="Mostrar senha">
+                                            <i class="bi bi-eye" id="iconNovaSenha"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-text" id="senhaInfo">
+                                        Use pelo menos 8 caracteres, inclua uma letra maiúscula e um caractere especial (!@@#$%^&*...)
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="confirmar_nova_senha" class="form-label">Confirmar Nova Senha</label>
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="confirmar_nova_senha" name="confirmar_nova_senha"
+                                               required minlength="8" placeholder="Digite a nova senha novamente">
+                                        <button class="btn btn-outline-secondary" type="button" id="toggleConfirmarNovaSenha" aria-label="Mostrar senha">
+                                            <i class="bi bi-eye" id="iconConfirmarNovaSenha"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-text" id="senhaMatch"></div>
+                                </div>
+
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-warning">
+                                        <i class="bi bi-key me-2"></i>Alterar Senha
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-info text-white border-0">
+                            <h5 class="mb-0">
+                                <i class="bi bi-graph-up me-2"></i>Estatísticas da Conta
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="stat-item">
+                                        <i class="bi bi-folder-fill text-primary me-2"></i>
+                                        <span><strong>@Model.TotalListas</strong> Listas criadas</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="stat-item">
+                                        <i class="bi bi-list-check text-success me-2"></i>
+                                        <span><strong>@Model.TotalTarefas</strong> Tarefas no total</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="stat-item">
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        <span><strong>@Model.TarefasConcluidas</strong> Tarefas concluídas</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="stat-item">
+                                        <i class="bi bi-calendar-event text-info me-2"></i>
+                                        <span>Membro desde <strong>@(usuario.CriadoEm?.ToString("dd/MM/yyyy") ?? "-")</strong></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <a asp-action="Dashboard" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-left me-2"></i>Voltar ao Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+@section Scripts {
+    <script>
+        const toggleSenhaAtual = document.getElementById('toggleSenhaAtual');
+        const toggleNovaSenha = document.getElementById('toggleNovaSenha');
+        const toggleConfirmarNovaSenha = document.getElementById('toggleConfirmarNovaSenha');
+
+        toggleSenhaAtual?.addEventListener('click', () => {
+            const senhaAtualInput = document.getElementById('senha_atual');
+            const iconSenhaAtual = document.getElementById('iconSenhaAtual');
+
+            if (!senhaAtualInput || !iconSenhaAtual) {
+                return;
+            }
+
+            if (senhaAtualInput.type === 'password') {
+                senhaAtualInput.type = 'text';
+                iconSenhaAtual.classList.replace('bi-eye', 'bi-eye-slash');
+            } else {
+                senhaAtualInput.type = 'password';
+                iconSenhaAtual.classList.replace('bi-eye-slash', 'bi-eye');
+            }
+        });
+
+        toggleNovaSenha?.addEventListener('click', () => {
+            const novaSenhaInput = document.getElementById('nova_senha');
+            const iconNovaSenha = document.getElementById('iconNovaSenha');
+
+            if (!novaSenhaInput || !iconNovaSenha) {
+                return;
+            }
+
+            if (novaSenhaInput.type === 'password') {
+                novaSenhaInput.type = 'text';
+                iconNovaSenha.classList.replace('bi-eye', 'bi-eye-slash');
+            } else {
+                novaSenhaInput.type = 'password';
+                iconNovaSenha.classList.replace('bi-eye-slash', 'bi-eye');
+            }
+        });
+
+        toggleConfirmarNovaSenha?.addEventListener('click', () => {
+            const confirmarNovaSenhaInput = document.getElementById('confirmar_nova_senha');
+            const iconConfirmarNovaSenha = document.getElementById('iconConfirmarNovaSenha');
+
+            if (!confirmarNovaSenhaInput || !iconConfirmarNovaSenha) {
+                return;
+            }
+
+            if (confirmarNovaSenhaInput.type === 'password') {
+                confirmarNovaSenhaInput.type = 'text';
+                iconConfirmarNovaSenha.classList.replace('bi-eye', 'bi-eye-slash');
+            } else {
+                confirmarNovaSenhaInput.type = 'password';
+                iconConfirmarNovaSenha.classList.replace('bi-eye-slash', 'bi-eye');
+            }
+        });
+    </script>
+}
