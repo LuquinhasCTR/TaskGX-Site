@@ -1525,7 +1525,9 @@ main {
     }
 
     .tarefa-item .d-flex {
+        align-content: flex-start;
         flex-direction: column;
+        
     }
 }
 
@@ -2106,6 +2108,7 @@ main {
 .card-body {
     background: var(--bg-primary) !important;
     color: var(--text-primary) !important;
+    margin-top:auto;
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 

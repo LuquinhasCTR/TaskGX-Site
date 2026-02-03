@@ -10,6 +10,7 @@
     var tarefas = Model.Tarefas;
     var listaSelecionada = Model.ListaSelecionada;
     var listaId = Model.ListaId;
+    var mostrandoTodas = listaSelecionada == null && listaId == 0;
 
     var usuarioNome = Model.UsuarioNome ?? "Usuário";
     var nomeParts = usuarioNome.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
@@ -205,58 +206,61 @@
 
                 <!-- Coluna de Tarefas -->
                 <div class="col-lg-9 d-flex flex-column" style="min-height: calc(100vh - 150px);">
-                    @if (listaSelecionada != null)
+                    @if (listaSelecionada != null || mostrandoTodas)
                     {
                         <!-- Cabeçalho da Lista Selecionada -->
                         <div class="card mb-1 shadow-sm border-0 lista-header-card overflow-hidden">
                             <div class="card-header d-flex justify-content-between align-items-center border-0 rounded-top py-1 px-2"
-                                 style="@(string.IsNullOrWhiteSpace(listaSelecionada.Cor) ? "background: linear-gradient(135deg, #0078D4 0%, #106EBE 100%); color: white;" : $"background: linear-gradient(135deg, {listaSelecionada.Cor} 0%, {listaSelecionada.Cor}dd 100%); color: white;")">
+                                 style="@(listaSelecionada == null || string.IsNullOrWhiteSpace(listaSelecionada.Cor) ? "background: linear-gradient(135deg, #0078D4 0%, #106EBE 100%); color: white;" : $"background: linear-gradient(135deg, {listaSelecionada.Cor} 0%, {listaSelecionada.Cor}dd 100%); color: white;")">
                                 <div class="d-flex align-items-center">
                                     <div class="lista-icon-wrapper me-2" style="width: 28px; height: 28px; font-size: 0.9rem;">
                                         <i class="bi bi-folder-fill"></i>
                                     </div>
                                     <div>
-                                        <h6 class="mb-0 fw-bold" style="font-size: 0.9rem;">@listaSelecionada.Nome</h6>
+                                        <h6 class="mb-0 fw-bold" style="font-size: 0.9rem;">@(listaSelecionada?.Nome ?? "Todas as Tarefas")</h6>
                                         <small class="opacity-90" style="font-size: 0.7rem;">
                                             <i class="bi bi-list-check me-1"></i>
                                             @tarefas.Count @(tarefas.Count == 1 ? "tarefa" : "tarefas")
                                         </small>
                                     </div>
                                 </div>
-                                <div class="d-flex gap-1">
-                                    <div class="btn-group">
-                                        <button type="button" class="btn btn-light btn-sm shadow-sm dropdown-toggle py-1 px-2" data-bs-toggle="dropdown">
-                                            <i class="bi bi-three-dots-vertical"></i>
+                                @if (listaSelecionada != null)
+                                {
+                                    <div class="d-flex gap-1">
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-light btn-sm shadow-sm dropdown-toggle py-1 px-2" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow-lg">
+                                                <li>
+                                                    <a class="dropdown-item" href="@Url.Action("Exportar", "Tarefas", new { formato = "json", listaId = listaSelecionada.ID })">
+                                                        <i class="bi bi-filetype-json me-2"></i>Exportar JSON
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item" href="@Url.Action("Exportar", "Tarefas", new { formato = "csv", listaId = listaSelecionada.ID })">
+                                                        <i class="bi bi-filetype-csv me-2"></i>Exportar CSV
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a class="dropdown-item" href="#" onclick="duplicarLista(@listaSelecionada.ID, @JsonSerializer.Serialize(listaSelecionada.Nome)); return false;">
+                                                        <i class="bi bi-files me-2"></i>Duplicar Lista
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item" href="#" onclick="favoritarLista(@listaSelecionada.ID, @(listaSelecionada.Favorita == true ? 0 : 1)); return false;">
+                                                        <i class="bi bi-star@(listaSelecionada.Favorita == true ? "-fill" : string.Empty) me-2"></i>
+                                                        @(listaSelecionada.Favorita == true ? "Remover dos Favoritos" : "Adicionar aos Favoritos")
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <button type="button" class="btn btn-light btn-sm shadow-sm fw-semibold py-1 px-2" data-bs-toggle="modal" data-bs-target="#modalNovaTarefa" data-lista-id="@listaSelecionada.ID">
+                                            <i class="bi bi-plus-circle-fill me-1"></i>Nova Tarefa
                                         </button>
-                                        <ul class="dropdown-menu dropdown-menu-end shadow-lg">
-                                            <li>
-                                                <a class="dropdown-item" href="@Url.Action("Exportar", "Tarefas", new { formato = "json", listaId = listaSelecionada.ID })">
-                                                    <i class="bi bi-filetype-json me-2"></i>Exportar JSON
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item" href="@Url.Action("Exportar", "Tarefas", new { formato = "csv", listaId = listaSelecionada.ID })">
-                                                    <i class="bi bi-filetype-csv me-2"></i>Exportar CSV
-                                                </a>
-                                            </li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li>
-                                                <a class="dropdown-item" href="#" onclick="duplicarLista(@listaSelecionada.ID, @JsonSerializer.Serialize(listaSelecionada.Nome)); return false;">
-                                                    <i class="bi bi-files me-2"></i>Duplicar Lista
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a class="dropdown-item" href="#" onclick="favoritarLista(@listaSelecionada.ID, @(listaSelecionada.Favorita == true ? 0 : 1)); return false;">
-                                                    <i class="bi bi-star@(listaSelecionada.Favorita == true ? "-fill" : string.Empty) me-2"></i>
-                                                    @(listaSelecionada.Favorita == true ? "Remover dos Favoritos" : "Adicionar aos Favoritos")
-                                                </a>
-                                            </li>
-                                        </ul>
                                     </div>
-                                    <button type="button" class="btn btn-light btn-sm shadow-sm fw-semibold py-1 px-2" data-bs-toggle="modal" data-bs-target="#modalNovaTarefa" data-lista-id="@listaSelecionada.ID">
-                                        <i class="bi bi-plus-circle-fill me-1"></i>Nova Tarefa
-                                    </button>
-                                </div>
+                                }
                             </div>
                         </div>
 
@@ -303,11 +307,14 @@
                                         <div class="empty-icon mb-3">
                                             <i class="bi bi-clipboard-check" style="font-size: 4rem; opacity: 0.2;"></i>
                                         </div>
-                                        <h5 class="mb-2 fw-semibold">Nenhuma tarefa nesta lista ainda</h5>
-                                        <p class="mb-4 text-muted">Comece adicionando sua primeira tarefa!</p>
-                                        <button type="button" class="btn btn-primary btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovaTarefa" data-lista-id="@listaSelecionada.ID">
-                                            <i class="bi bi-plus-circle-fill me-2"></i>Criar primeira tarefa
-                                        </button>
+                                        <h5 class="mb-2 fw-semibold">@(mostrandoTodas ? "Nenhuma tarefa cadastrada ainda" : "Nenhuma tarefa nesta lista ainda")</h5>
+                                        <p class="mb-4 text-muted">@(mostrandoTodas ? "Suas tarefas aparecerão aqui assim que forem criadas." : "Comece adicionando sua primeira tarefa!")</p>
+                                        @if (listaSelecionada != null)
+                                        {
+                                            <button type="button" class="btn btn-primary btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovaTarefa" data-lista-id="@listaSelecionada.ID">
+                                                <i class="bi bi-plus-circle-fill me-2"></i>Criar primeira tarefa
+                                            </button>
+                                        }
                                     </div>
                                 }
                                 else

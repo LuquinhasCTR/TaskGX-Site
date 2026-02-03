@@ -241,6 +241,10 @@ namespace TaskGX.Controllers
                         viewModel.Tarefas = tarefas;
                     }
                 }
+                else
+                {
+                    viewModel.Tarefas = todasTarefas;
+                }
             }
             catch (Exception ex)
             {
