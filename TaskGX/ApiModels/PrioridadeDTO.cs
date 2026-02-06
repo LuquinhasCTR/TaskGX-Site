@@ -1,6 +1,6 @@
 ﻿namespace TaskGX.ApiModels
 {
-    public class PropriedadeDTO
+    public class PrioridadeDTO
     {
     }
 }
