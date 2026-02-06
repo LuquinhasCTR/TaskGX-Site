@@ -8,5 +8,11 @@ namespace TaskGX.Web.Services
 {
     public class ApiClient
     {
+        private const string SessionTokenKey = "JWT";
+
+        private readonly HttpClient _http;
+        private readonly IHttpContextAccessor _ctx;
+        private readonly JsonSerializerOptions _json;
+
     }
 }
