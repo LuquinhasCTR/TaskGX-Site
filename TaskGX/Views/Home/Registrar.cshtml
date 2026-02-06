@@ -37,8 +37,8 @@
                     }
 
                     @* Formulário de registro *@
-                    <form asp-controller="Home" asp-action="Registro" method="post" class="needs-validation" novalidate>
-                        @Html.AntiForgeryToken()
+@*                     <form asp-controller="Home" asp-action="Registrar" method="post" class="needs-validation" novalidate>
+ *@                        @Html.AntiForgeryToken()
                         <partial name="_ValidationScriptsPartial" />
 
                         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
@@ -47,7 +47,7 @@
                             <label asp-for="Nome" class="form-label">
                                 <i class="bi bi-person me-1"></i>Nome Completo
                             </label>
-                            <input asp-for="Nome" class="form-control" placeholder="Seu nome completo" autofocus />
+                            <input asp-for="Nome" class="form-control" placeholder="Seu nome completo" autofocus required />
                             <span asp-validation-for="Nome" class="text-danger"></span>
                         </div>
 
@@ -55,7 +55,7 @@
                             <label asp-for="Email" class="form-label">
                                 <i class="bi bi-envelope me-1"></i>E-mail
                             </label>
-                            <input asp-for="Email" class="form-control" placeholder="seu@email.com" />
+                            <input asp-for="Email" class="form-control" placeholder="seu@email.com" type="email" required />
                             <span asp-validation-for="Email" class="text-danger"></span>
                             <div class="form-text">Usaremos este e-mail para entrar na sua conta</div>
                         </div>
@@ -65,7 +65,7 @@
                                 <i class="bi bi-lock me-1"></i>Senha
                             </label>
                             <div class="input-group">
-                                <input asp-for="Senha" class="form-control" id="senha" placeholder="Mínimo 8 caracteres, maiúscula e caractere especial" />
+                                <input asp-for="Senha" class="form-control" id="senha" placeholder="Mínimo 8 caracteres, maiúscula e caractere especial" type="password" required />
                                 <button class="btn btn-outline-secondary" type="button" id="toggleSenha" aria-label="Mostrar senha">
                                     <i class="bi bi-eye" id="iconSenha"></i>
                                 </button>
@@ -79,7 +79,7 @@
                                 <i class="bi bi-lock-fill me-1"></i>Confirmar Senha
                             </label>
                             <div class="input-group">
-                                <input asp-for="ConfirmarSenha" class="form-control" id="confirmar_senha" placeholder="Digite a senha novamente" />
+                                <input asp-for="ConfirmarSenha" class="form-control" id="confirmar_senha" placeholder="Digite a senha novamente" type="password" required />
                                 <button class="btn btn-outline-secondary" type="button" id="toggleConfirmarSenha" aria-label="Mostrar senha">
                                     <i class="bi bi-eye" id="iconConfirmarSenha"></i>
                                 </button>
@@ -89,7 +89,7 @@
                         </div>
 
                         <div class="mb-3 form-check">
-                            <input asp-for="Termos" class="form-check-input" id="termos" />
+                            <input asp-for="Termos" class="form-check-input" id="termos" required />
                             <label class="form-check-label" for="termos">
                                 Eu concordo com os
                                 <a asp-controller="Home" asp-action="Termos" target="_blank" class="text-decoration-none">Termos de Uso</a>
@@ -99,11 +99,11 @@
                             <span asp-validation-for="Termos" class="text-danger d-block"></span>
                         </div>
 
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary w-100">
                             <i class="bi bi-person-plus me-2"></i>Criar Conta
                         </button>
-                    </form>
-
+@*                     </form>
+ *@
                     <div class="divider">ou</div>
 
                     <div class="auth-footer">

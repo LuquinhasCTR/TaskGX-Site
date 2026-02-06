@@ -1,0 +1,144 @@
+﻿@model TaskGX.ViewModels.VerificarEmailViewModel
+
+@{
+    ViewData["Title"] = "Verificar Email";
+    var novoRegistro = Model.NovoRegistro;
+    var trocaSenha = Model.TrocaSenha;
+    var erro = Model.Erro;
+    var sucesso = Model.Sucesso;
+    var email = Model.Email ?? string.Empty;
+}
+
+<main>
+    <div class="page-content">
+        <div class="container">
+            <div class="auth-container">
+                <div class="auth-card shadow-lg">
+                    <div class="auth-header text-center mb-4">
+                        <div class="auth-icon mb-3">
+                            <i class="bi bi-envelope-check"></i>
+                        </div>
+                        <h2>Verificar Email</h2>
+                        <p class="subtitle">
+                            @(trocaSenha
+                                ? "Digite o código enviado para confirmar a alteração de senha"
+                                : "Digite o código enviado para seu email")
+                        </p>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(erro))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            @erro
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(sucesso))
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle me-2"></i>
+                            @sucesso
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @if (novoRegistro)
+                    {
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <i class="bi bi-envelope-check me-2"></i>
+                            <strong>Verifique seu email para ativar sua conta</strong><br>
+                            Enviamos um código de verificação de 6 dígitos para <strong>@email</strong><br>
+                            <small class="d-block mt-2">Verifique sua caixa de entrada e a pasta de spam. O código expira em 24 horas.</small>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @if (trocaSenha)
+                    {
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            <i class="bi bi-shield-lock me-2"></i>
+                            <strong>Confirme a alteração de senha</strong><br>
+                            Enviamos um código de verificação de 6 dígitos para <strong>@email</strong><br>
+                            <small class="d-block mt-2">Verifique sua caixa de entrada. O código expira em 1 hora.</small>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <form asp-controller="Home" asp-action="ProcessarVerificacaoEmail" method="post" id="formVerificacao">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="tipo" value="@(trocaSenha ? "senha" : "registro")">
+                        <input type="hidden" name="email" value="@email">
+                        
+                        <div class="mb-3">
+                            <label for="codigo" class="form-label">
+                                <i class="bi bi-key me-1"></i>Código de Verificação
+                            </label>
+                            <input 
+                                type="text" 
+                                class="form-control text-center" 
+                                id="codigo" 
+                                name="codigo" 
+                                placeholder="000000"
+                                required
+                                autofocus
+                                maxlength="6"
+                                pattern="[0-9]{6}"
+                                style="font-size: 24px; letter-spacing: 8px; font-weight: bold;"
+                            >
+                            <div class="form-text text-center">
+                                Digite o código de 6 dígitos enviado para seu email
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-check-circle me-2"></i>Verificar
+                        </button>
+                    </form>
+
+                    <div class="mt-3 text-center">
+                        <p class="text-muted mb-2">Não recebeu o código?</p>
+                        <form asp-controller="Home" asp-action="ReenviarCodigo" method="post" style="display: inline;">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="email" value="@email">
+                            <input type="hidden" name="tipo" value="@(trocaSenha ? "senha" : "registro")">
+                            <button type="submit" class="btn btn-link text-decoration-none p-0">
+                                Reenviar código
+                            </button>
+                        </form>
+                    </div>
+
+                    @if (novoRegistro)
+                    {
+                        <div class="divider">ou</div>
+                        <div class="auth-footer text-center">
+                            <a asp-controller="Home" asp-action="Login">Voltar para o login</a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const codigoInput = document.getElementById('codigo');
+            if (!codigoInput) {
+                return;
+            }
+
+            codigoInput.addEventListener('input', function () {
+                this.value = this.value.replace(/[^0-9]/g, '');
+            });
+
+            codigoInput.addEventListener('input', function () {
+                if (this.value.length === 6) {
+                }
+            });
+        });
+    </script>
+}
+

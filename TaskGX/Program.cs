@@ -8,11 +8,16 @@ var builder = WebApplication.CreateBuilder(args);
 // ----------------------------
 builder.Services.AddControllersWithViews();
 
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddHttpContextAccessor();
+
 // Injeção de dependência
 builder.Services.AddScoped<RepositorioUsuario>();
 builder.Services.AddScoped<RepositorioDashboard>();
 builder.Services.AddScoped<RepositorioTarefas>();
 builder.Services.AddScoped<ServicoAutenticacao>();
+builder.Services.AddScoped<RazorViewToStringRenderer>();
+builder.Services.AddScoped<EmailSender>();
 
 // Sessão
 builder.Services.AddDistributedMemoryCache();

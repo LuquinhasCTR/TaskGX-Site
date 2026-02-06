@@ -1,0 +1,158 @@
+﻿@model TaskGX.ViewModels.EmailTemplateViewModel
+
+@{
+    var headerColor = Model.TrocaSenha ? "#a52a2a" : "#8b6f47";
+    var accentColor = Model.TrocaSenha ? "#a52a2a" : "#8b6f47";
+    var panelColor = Model.TrocaSenha ? "#ffe0e0" : "#f5e6d3";
+    var greetingColor = Model.TrocaSenha ? "#8b1a1a" : "#5c3d2e";
+    var subtitle = Model.TrocaSenha ? "Protegendo sua conta" : "Seu assistente organizacional favorito";
+    var primaryMessage = Model.TrocaSenha
+        ? $"Recebemos uma solicitação para alterar a senha da sua conta no {Model.AppName}."
+        : $"Obrigado por criar sua conta no {Model.AppName}! Estamos muito felizes em ter você conosco.";
+    var secondaryMessage = Model.TrocaSenha
+        ? "Para confirmar a alteração de senha, use o código abaixo:"
+        : "Para verificar seu email e ativar sua conta, use o código abaixo:";
+    var infoMessage = Model.TrocaSenha
+        ? "⚠️ Importante: Se você não solicitou a alteração de senha, ignore este email e sua senha permanecerá inalterada. Nossa equipe nunca pedirá sua senha por email."
+        : $"⏰ Importante: Este código expira em {Model.ExpiracaoHoras} horas. Se você não solicitou esta conta, pode ignorar este email com segurança.";
+    var footerMessage = $"© {DateTime.Now.Year} {Model.AppName}. Todos os direitos reservados.";
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #2c2c2c;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background-color: @headerColor;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+            .header h1 {
+                margin: 0;
+                font-size: 24px;
+            }
+
+            .header .subtitle {
+                font-size: 14px;
+                opacity: 0.9;
+                margin-top: 8px;
+            }
+
+        .content {
+            padding: 30px 25px;
+        }
+
+        .greeting {
+            font-size: 18px;
+            color: @greetingColor;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .message {
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        .codigo-container {
+            background-color: @panelColor;
+            border: 2px solid @accentColor;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: center;
+        }
+
+        .codigo-label {
+            font-size: 12px;
+            color: @greetingColor;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .codigo {
+            background: #ffffff;
+            border: 2px dashed @accentColor;
+            padding: 15px;
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: @greetingColor;
+            letter-spacing: 6px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .info-box {
+            background-color: #fff8e1;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #856404;
+        }
+
+        .footer {
+            background-color: #5c3d2e;
+            color: #d4c4b0;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+        }
+
+            .footer p {
+                margin: 5px 0;
+            }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🦝 @Model.AppName</h1>
+            <div class="subtitle">@subtitle</div>
+        </div>
+        <div class="content">
+            <div class="greeting">Olá, @Model.Nome!</div>
+            <p class="message">@primaryMessage</p>
+            <p class="message">@secondaryMessage</p>
+            <div class="codigo-container">
+                <div class="codigo-label">Código de Verificação</div>
+                <div class="codigo">@Model.Codigo</div>
+            </div>
+            <div class="info-box">
+                @infoMessage
+            </div>
+            <p class="message" style="margin-top: 25px;">Se tiver alguma dúvida, nossa equipe está sempre pronta para ajudar! 🦝</p>
+        </div>
+        <div class="footer">
+            <p>🦝 @Model.AppName - Organize suas tarefas de forma inteligente</p>
+            <p>@footerMessage</p>
+        </div>
+    </div>
+</body>
+</html>
+

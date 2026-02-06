@@ -23,7 +23,7 @@ namespace TaskGX.Models
         [Compare("Senha", ErrorMessage = "As senhas não coincidem.")]
         public string ConfirmarSenha { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Você precisa aceitar os termos.")]
-        public bool Termos { get; set; } 
+        [Range(typeof(bool), "true", "true", ErrorMessage = "Você precisa aceitar os termos.")]
+        public bool Termos { get; set; }
     }
 }

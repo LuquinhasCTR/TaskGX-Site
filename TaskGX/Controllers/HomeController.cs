@@ -47,6 +47,77 @@ namespace TaskGX.Controllers
         public IActionResult Privacidade() => View();
         public IActionResult Sobre() => View();
         [HttpGet]
+        public IActionResult VerificarEmail(bool novo = false, bool senha = false, string? erro = null, string? sucesso = null, string? email = null)
+        {
+            var usuarioLogado = TryObterUsuarioId(out _);
+            if (!novo && !senha && !usuarioLogado)
+            {
+                TempData["Error"] = "Você precisa fazer login.";
+                return RedirectToAction("Login");
+            }
+
+            var usuarioEmail = HttpContext.Session.GetString("UsuarioEmail");
+            var viewModel = new VerificarEmailViewModel
+            {
+                NovoRegistro = novo,
+                TrocaSenha = senha,
+                Erro = !string.IsNullOrWhiteSpace(erro) ? erro : TempData["Error"] as string,
+                Sucesso = !string.IsNullOrWhiteSpace(sucesso) ? sucesso : TempData["Success"] as string,
+                Email = !string.IsNullOrWhiteSpace(email) ? email : usuarioEmail
+            };
+
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ProcessarVerificacaoEmail(string codigo, string tipo, string? email)
+        {
+            if (!string.Equals(tipo, "registro", StringComparison.OrdinalIgnoreCase))
+            {
+                return RedirectToAction("VerificarEmail", new
+                {
+                    novo = string.Equals(tipo, "registro", StringComparison.OrdinalIgnoreCase),
+                    senha = string.Equals(tipo, "senha", StringComparison.OrdinalIgnoreCase),
+                    email,
+                    erro = "Fluxo de verificação não disponível."
+                });
+            }
+
+            var resultado = await _authService.VerificarEmailAsync(email ?? string.Empty, codigo ?? string.Empty);
+            if (!resultado.Sucesso)
+            {
+                return RedirectToAction("VerificarEmail", new { novo = true, email, erro = resultado.Mensagem });
+            }
+
+            TempData["Success"] = resultado.Mensagem;
+            return RedirectToAction("Login");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ReenviarCodigo(string tipo, string? email)
+        {
+            if (!string.Equals(tipo, "registro", StringComparison.OrdinalIgnoreCase))
+            {
+                return RedirectToAction("VerificarEmail", new
+                {
+                    novo = string.Equals(tipo, "registro", StringComparison.OrdinalIgnoreCase),
+                    senha = string.Equals(tipo, "senha", StringComparison.OrdinalIgnoreCase),
+                    email,
+                    erro = "Fluxo de reenvio não disponível."
+                });
+            }
+
+            var resultado = await _authService.ReenviarCodigoAsync(email ?? string.Empty);
+            if (!resultado.Sucesso)
+            {
+                return RedirectToAction("VerificarEmail", new { novo = true, email, erro = resultado.Mensagem });
+            }
+
+            return RedirectToAction("VerificarEmail", new { novo = true, email, sucesso = resultado.Mensagem });
+        }
+        [HttpGet]
         public async Task<IActionResult> Calendario()
         {
             if (!TryObterUsuarioId(out var usuarioId))
@@ -311,9 +382,17 @@ namespace TaskGX.Controllers
                 return View();
             }
 
+            if (!usuario.EmailVerificado)
+            {
+                HttpContext.Session.SetString("UsuarioEmail", usuario.Email);
+                TempData["Error"] = "Você precisa verificar seu email antes de entrar.";
+                return RedirectToAction("VerificarEmail", new { novo = true, email = usuario.Email });
+            }
+
             // Criar sessão
             HttpContext.Session.SetString("UsuarioID", usuario.ID.ToString());
             HttpContext.Session.SetString("UsuarioNome", usuario.Nome);
+            HttpContext.Session.SetString("UsuarioEmail", usuario.Email);
 
             return RedirectToAction("Dashboard");
         }
@@ -326,13 +405,19 @@ namespace TaskGX.Controllers
         {
             return View();
         }
-
+        
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Registrar(RegisterViewModel model)
         {
             if (!ModelState.IsValid)
+            {
+                var erros = string.Join(" ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+                TempData["Error"] = string.IsNullOrWhiteSpace(erros)
+                    ? "Dados inválidos. Verifique os campos e tente novamente."
+                    : erros;
                 return View(model);
+            }
 
             // Chama o serviço de autenticação
             var resultado = await _authService.CriarContaAsync(
@@ -348,8 +433,8 @@ namespace TaskGX.Controllers
                 return View(model);
             }
 
-            TempData["Success"] = resultado.Mensagem;
-            return RedirectToAction("Login");
+            HttpContext.Session.SetString("UsuarioEmail", model.Email);
+            return RedirectToAction("VerificarEmail", new { novo = true, email = model.Email, sucesso = resultado.Mensagem });
         }
 
         // =========================

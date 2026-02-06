@@ -1,5 +1,7 @@
-﻿// Toggle mostrar/ocultar senha para registro
-document.addEventListener('DOMContentLoaded', function () {
+﻿document.addEventListener('DOMContentLoaded', function () {
+    // =========================
+    // Toggle mostrar/ocultar senha
+    // =========================
     const toggleSenha = document.getElementById('toggleSenha');
     const toggleConfirmarSenha = document.getElementById('toggleConfirmarSenha');
 
@@ -26,7 +28,9 @@ document.addEventListener('DOMContentLoaded', function () {
         toggle('confirmar_senha', 'iconConfirmarSenha');
     });
 
-    // Checagem simples de igualdade de senha
+    // =========================
+    // Checagem de igualdade de senha
+    // =========================
     const senhaInput = document.getElementById('senha');
     const confirmarInput = document.getElementById('confirmar_senha');
     const senhaMatchText = document.getElementById('senhaMatch');
@@ -50,4 +54,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     senhaInput?.addEventListener('input', checkMatch);
     confirmarInput?.addEventListener('input', checkMatch);
+
+    // =========================
+    // Bootstrap validation + submit
+    // =========================
+    const form = document.querySelector('.needs-validation');
+    if (!form) return;
+
+    form.addEventListener('submit', function (event) {
+        // Checa validade dos campos
+        if (!form.checkValidity()) {
+            event.preventDefault(); // previne submit se inválido
+            event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+    }, false);
 });

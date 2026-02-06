@@ -212,5 +212,30 @@ namespace TaskGX.Data
                 // Não crítico
             }
         }
+
+        public async Task AtualizarVerificacaoEmailAsync(int usuarioId, bool emailVerificado, bool ativo, string codigoVerificacao, DateTime? expiracao)
+        {
+            using var conexao = new MySqlConnection(_connectionString);
+            await conexao.OpenAsync();
+
+            const string sql = @"
+                UPDATE Usuarios
+                SET EmailVerificado = @EmailVerificado,
+                    Ativo = @Ativo,
+                    CodigoVerificacao = @CodigoVerificacao,
+                    CodigoVerificacaoExpiracao = @CodigoVerificacaoExpiracao,
+                    DataAtualizacao = @DataAtualizacao
+                WHERE ID = @UsuarioId;";
+
+            using var comando = new MySqlCommand(sql, conexao);
+            comando.Parameters.AddWithValue("@EmailVerificado", emailVerificado);
+            comando.Parameters.AddWithValue("@Ativo", ativo);
+            comando.Parameters.AddWithValue("@CodigoVerificacao", (object)codigoVerificacao ?? DBNull.Value);
+            comando.Parameters.AddWithValue("@CodigoVerificacaoExpiracao", (object)expiracao ?? DBNull.Value);
+            comando.Parameters.AddWithValue("@DataAtualizacao", DateTime.Now);
+            comando.Parameters.AddWithValue("@UsuarioId", usuarioId);
+
+            await comando.ExecuteNonQueryAsync();
+        }
     }
 }
