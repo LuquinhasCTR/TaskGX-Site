@@ -24,6 +24,20 @@ namespace TaskGX.Web.Services
             };
         }
 
+        private void ApplyAuthHeader()
+        {
+            var token = _ctx.HttpContext?.Session.GetString(SessionTokenKey);
+
+            // Limpa header antigo para evitar ficar com token velho
+            _http.DefaultRequestHeaders.Authorization = null;
+
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                _http.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", token);
+            }
+        }
+
         public void SetToken(string token)
         {
             _ctx.HttpContext?.Session.SetString(SessionTokenKey, token);
