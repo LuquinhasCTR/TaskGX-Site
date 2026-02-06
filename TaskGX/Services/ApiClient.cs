@@ -96,5 +96,48 @@ namespace TaskGX.Web.Services
                 throw new ApiException((int)res.StatusCode, error);
             }
         }
+
+        // ---------- Helpers ----------
+
+        private StringContent ToJsonContent(object body)
+        {
+            var json = JsonSerializer.Serialize(body, _json);
+            return new StringContent(json, Encoding.UTF8, "application/json");
+        }
+
+        private async Task<T?> HandleResponse<T>(HttpResponseMessage res, CancellationToken ct)
+        {
+            if (res.StatusCode == HttpStatusCode.Unauthorized)
+                throw new ApiUnauthorizedException();
+
+            if (res.StatusCode == HttpStatusCode.NoContent)
+                return default;
+
+            var text = await res.Content.ReadAsStringAsync(ct);
+
+            if (!res.IsSuccessStatusCode)
+                throw new ApiException((int)res.StatusCode, text);
+
+            if (string.IsNullOrWhiteSpace(text))
+                return default;
+
+            return JsonSerializer.Deserialize<T>(text, _json);
+        }
+    }
+
+    public class ApiUnauthorizedException : Exception
+    {
+        public ApiUnauthorizedException() : base("Não autorizado (401).") { }
+    }
+
+    public class ApiException : Exception
+    {
+        public int StatusCode { get; }
+
+        public ApiException(int statusCode, string message)
+            : base(message)
+        {
+            StatusCode = statusCode;
+        }
     }
 }
