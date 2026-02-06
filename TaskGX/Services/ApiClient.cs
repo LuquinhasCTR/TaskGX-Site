@@ -23,5 +23,21 @@ namespace TaskGX.Web.Services
                 PropertyNameCaseInsensitive = true
             };
         }
+
+        public void SetToken(string token)
+        {
+            _ctx.HttpContext?.Session.SetString(SessionTokenKey, token);
+        }
+
+        public void ClearToken()
+        {
+            _ctx.HttpContext?.Session.Remove(SessionTokenKey);
+        }
+
+        public string? GetToken()
+        {
+            return _ctx.HttpContext?.Session.GetString(SessionTokenKey);
+        }
+
     }
 }
