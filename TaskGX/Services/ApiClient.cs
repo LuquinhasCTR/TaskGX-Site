@@ -1,4 +1,3 @@
-﻿namespace TaskGX.Services
 ﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -14,5 +13,15 @@ namespace TaskGX.Web.Services
         private readonly IHttpContextAccessor _ctx;
         private readonly JsonSerializerOptions _json;
 
+        public ApiClient(HttpClient http, IHttpContextAccessor ctx)
+        {
+            _http = http;
+            _ctx = ctx;
+
+            _json = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+        }
     }
 }
