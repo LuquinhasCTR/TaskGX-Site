@@ -79,12 +79,68 @@ namespace TaskGX.Services
             );
         }
 
+        // PUT /api/tarefas/{id}/detalhes
+        public async Task AtualizarDetalhesAsync(
+            int id,
+            int listaId,
+            string titulo,
+            string? descricao,
+            string? tags,
+            int? prioridadeId,
+            DateTime? dataVencimento
+        )
+        {
+            await _api.PutAsync<object>(
+                $"/api/tarefas/{id}/detalhes",
+                new
+                {
+                    id,
+                    listaID = listaId,
+                    titulo,
+                    descricao,
+                    tags,
+                    prioridadeID = prioridadeId,
+                    dataVencimento
+                },
+                auth: true
+            );
+        }
+
         // POST /api/tarefas/{id}/concluir
         public async Task ConcluirAsync(int id)
         {
             await _api.PostAsync<object>(
                 $"/api/tarefas/{id}/concluir",
                 new { },
+                auth: true
+            );
+        }
+
+        // PUT /api/tarefas/{id}/conclusao
+        public async Task AtualizarConclusaoAsync(int id, bool concluida)
+        {
+            await _api.PutAsync<object>(
+                $"/api/tarefas/{id}/conclusao",
+                new { concluida },
+                auth: true
+            );
+        }
+
+        // POST /api/tarefas/{id}/duplicar
+        public async Task DuplicarAsync(int id)
+        {
+            await _api.PostAsync<object>(
+                $"/api/tarefas/{id}/duplicar",
+                new { },
+                auth: true
+            );
+        }
+
+        // GET /api/tarefas/exportar?listaId={listaId}&formato={formato}
+        public async Task<byte[]?> ExportarAsync(int listaId, string formato)
+        {
+            return await _api.GetAsync<byte[]>(
+                $"/api/tarefas/exportar?listaId={listaId}&formato={formato}",
                 auth: true
             );
         }
