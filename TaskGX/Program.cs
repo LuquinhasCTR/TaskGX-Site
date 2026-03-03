@@ -1,5 +1,4 @@
-using TaskGX.Data;
-using TaskGX.Services;
+using TaskGX.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,18 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 // ----------------------------
 builder.Services.AddControllersWithViews();
 
-builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+// Sessão + HttpContext
 builder.Services.AddHttpContextAccessor();
-
-// Injeção de dependência
-builder.Services.AddScoped<RepositorioUsuario>();
-builder.Services.AddScoped<RepositorioDashboard>();
-builder.Services.AddScoped<RepositorioTarefas>();
-builder.Services.AddScoped<ServicoAutenticacao>();
-builder.Services.AddScoped<RazorViewToStringRenderer>();
-builder.Services.AddScoped<EmailSender>();
-
-// Sessão
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -27,6 +16,23 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
+
+//  HTTP Client para chamar a API
+builder.Services.AddHttpClient<ApiClient>(client =>
+{
+    var baseUrl = builder.Configuration["Api:BaseUrl"]
+        ?? throw new InvalidOperationException("Api:BaseUrl não configurado no appsettings.json.");
+
+    client.BaseAddress = new Uri(baseUrl);
+});
+
+// (Opcional, mas recomendado) Services que chamam a API
+builder.Services.AddScoped<AuthApiClient>();
+builder.Services.AddScoped<ListasApiService>();
+builder.Services.AddScoped<TarefasApiService>();
+
+//  Removidos: EmailSettings/EmailSender/RazorViewToStringRenderer/Repositorios/ServicoAutenticacao
+// (porque agora o site vai consumir a API e não fazer lógica local)
 
 // ----------------------------
 // Build da aplicação
@@ -46,9 +52,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
-app.UseSession(); // Sessão precisa vir antes de MapControllerRoute
+app.UseSession(); // 
 
-// Mapear rotas
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Login}/{id?}"

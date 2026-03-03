@@ -1,4 +1,4 @@
-namespace TaskGX.Models
+namespace TaskGX.Controllers.Models
 {
     public class ErrorViewModel
     {

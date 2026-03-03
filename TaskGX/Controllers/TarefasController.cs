@@ -1,37 +1,48 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using System;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using TaskGX.Data;
+using TaskGX.ApiModels;
+using TaskGX.Services;
+using TaskGX.Web.Services;
 
 namespace TaskGX.Controllers
 {
     public class TarefasController : Controller
     {
-        private readonly RepositorioDashboard _dashboardRepositorio;
-        private readonly RepositorioTarefas _tarefasRepositorio;
+        private readonly ListasApiService _listasApi;
+        private readonly TarefasApiService _tarefasApi;
+        private readonly ApiClient _api; // para chamadas extras se precisar
         private readonly ILogger<TarefasController> _logger;
 
         public TarefasController(
-            RepositorioDashboard dashboardRepositorio,
-            RepositorioTarefas tarefasRepositorio,
+            ListasApiService listasApi,
+            TarefasApiService tarefasApi,
+            TaskGX.Web.Services.ApiClient api,
             ILogger<TarefasController> logger)
         {
-            _dashboardRepositorio = dashboardRepositorio;
-            _tarefasRepositorio = tarefasRepositorio;
+            _listasApi = listasApi;
+            _tarefasApi = tarefasApi;
+            _api = api;
             _logger = logger;
         }
 
+        // =========================
+        // LISTAS (do modal "Nova Lista")
+        // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ProcessarLista(string nome, string cor, string acao)
         {
-            if (!TryObterUsuarioId(out var usuarioId))
+            if (!IsLogado()) return RedirectToAction("Login", "Home");
+
+            if (!string.Equals(acao, "criar", StringComparison.OrdinalIgnoreCase))
             {
-                return RedirectToAction("Login", "Home");
+                TempData["Error"] = "Ação inválida para lista.";
+                return RedirectToAction("Dashboard", "Home");
             }
 
             if (string.IsNullOrWhiteSpace(nome))
@@ -40,27 +51,28 @@ namespace TaskGX.Controllers
                 return RedirectToAction("Dashboard", "Home");
             }
 
-            if (!string.Equals(acao, "criar", StringComparison.OrdinalIgnoreCase))
-            {
-                TempData["Error"] = "Ação inválida para lista.";
-                return RedirectToAction("Dashboard", "Home");
-            }
-
             try
             {
-                var favoritaExists = await _dashboardRepositorio.ColunaExisteAsync("Listas", "Favorita");
-                await _tarefasRepositorio.CriarListaAsync(usuarioId, nome.Trim(), cor, favoritaExists);
+                await _listasApi.CriarListaAsync(nome.Trim(), cor);
                 TempData["Success"] = "Lista criada com sucesso.";
+            }
+            catch (TaskGX.Web.Services.ApiUnauthorizedException)
+            {
+                LimparSessao();
+                return RedirectToAction("Login", "Home");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao criar lista.");
+                _logger.LogError(ex, "Erro ao criar lista via API.");
                 TempData["Error"] = "Erro ao criar lista. Tente novamente.";
             }
 
             return RedirectToAction("Dashboard", "Home");
         }
 
+        // =========================
+        // TAREFAS (modal "Nova Tarefa" e "Editar")
+        // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ProcessarTarefa(
@@ -73,10 +85,7 @@ namespace TaskGX.Controllers
             int? tarefa_id,
             string acao)
         {
-            if (!TryObterUsuarioId(out var usuarioId))
-            {
-                return RedirectToAction("Login", "Home");
-            }
+            if (!IsLogado()) return RedirectToAction("Login", "Home");
 
             if (string.IsNullOrWhiteSpace(titulo))
             {
@@ -84,164 +93,223 @@ namespace TaskGX.Controllers
                 return RedirectToAction("Dashboard", "Home", new { listaId = lista_id ?? 0 });
             }
 
-            if (!string.Equals(acao, "criar", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(acao, "editar", StringComparison.OrdinalIgnoreCase))
+            var listaIdDestino = lista_id ?? 0;
+            if (listaIdDestino <= 0)
             {
-                TempData["Error"] = "Ação inválida para tarefa.";
-                return RedirectToAction("Dashboard", "Home", new { listaId = lista_id ?? 0 });
+                TempData["Error"] = "Selecione uma lista para criar a tarefa.";
+                return RedirectToAction("Dashboard", "Home");
             }
-
-            int? listaIdDestino = null;
 
             try
             {
-                listaIdDestino = lista_id;
-                if (!listaIdDestino.HasValue || listaIdDestino <= 0)
+                if (string.Equals(acao, "criar", StringComparison.OrdinalIgnoreCase))
                 {
-                    var favoritaExists = await _dashboardRepositorio.ColunaExisteAsync("Listas", "Favorita");
-                    listaIdDestino = await _tarefasRepositorio.ObterOuCriarListaPadraoAsync(usuarioId, favoritaExists);
-                }
+                    await _tarefasApi.CriarAsync(
+                        listaIdDestino,
+                        titulo.Trim(),
+                        descricao,
+                        tags,
+                        prioridade_id,
+                        data_vencimento
+                    );
 
-                if (string.Equals(acao, "editar", StringComparison.OrdinalIgnoreCase))
+                    TempData["Success"] = "Tarefa criada com sucesso.";
+                }
+                else if (string.Equals(acao, "editar", StringComparison.OrdinalIgnoreCase))
                 {
                     if (!tarefa_id.HasValue || tarefa_id.Value <= 0)
                     {
                         TempData["Error"] = "Tarefa inválida para edição.";
-                        return RedirectToAction("Dashboard", "Home", new { listaId = lista_id ?? 0 });
+                        return RedirectToAction("Dashboard", "Home", new { listaId = listaIdDestino });
                     }
 
-                    var atualizado = await _tarefasRepositorio.AtualizarTarefaAsync(
-                        tarefa_id.Value,
-                        usuarioId,
-                        titulo.Trim(),
-                        descricao,
-                        prioridade_id,
-                        data_vencimento,
-                        tags);
+                    // Para editar com segurança, pegamos as tarefas da lista e achamos a tarefa atual
+                    var tarefas = await _tarefasApi.ObterPorListaAsync(listaIdDestino);
+                    var atual = tarefas.FirstOrDefault(t => t.ID == tarefa_id.Value);
+                    if (atual == null)
+                    {
+                        TempData["Error"] = "Tarefa não encontrada.";
+                        return RedirectToAction("Dashboard", "Home", new { listaId = listaIdDestino });
+                    }
 
-                    TempData["Success"] = atualizado ? "Tarefa atualizada com sucesso." : "Não foi possível atualizar a tarefa.";
+                    await _tarefasApi.AtualizarAsync(
+                        id: atual.ID,
+                        listaId: atual.ListaId,
+                        titulo: titulo.Trim(),
+                        descricao: descricao,
+                        tags: tags,
+                        prioridadeId: prioridade_id,
+                        concluida: atual.Concluida,
+                        arquivada: atual.Arquivada,
+                        dataVencimento: data_vencimento,
+                        ordem: 0
+                    );
+
+                    TempData["Success"] = "Tarefa atualizada com sucesso.";
                 }
                 else
                 {
-                    await _tarefasRepositorio.CriarTarefaAsync(
-                        listaIdDestino,
-                        titulo.Trim(),
-                        descricao,
-                        prioridade_id,
-                        data_vencimento,
-                        tags);
-
-                    TempData["Success"] = "Tarefa criada com sucesso.";
+                    TempData["Error"] = "Ação inválida para tarefa.";
                 }
+            }
+            catch (TaskGX.Web.Services.ApiUnauthorizedException)
+            {
+                LimparSessao();
+                return RedirectToAction("Login", "Home");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao criar tarefa.");
-                TempData["Error"] = "Erro ao criar tarefa. Tente novamente.";
+                _logger.LogError(ex, "Erro ao processar tarefa via API.");
+                TempData["Error"] = "Erro ao salvar tarefa. Tente novamente.";
             }
 
-            return RedirectToAction("Dashboard", "Home", new { listaId = listaIdDestino ?? lista_id ?? 0 });
+            return RedirectToAction("Dashboard", "Home", new { listaId = listaIdDestino });
         }
 
+        // =========================
+        // Marcar concluída (JS -> fetch)
+        // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> MarcarConcluida([FromBody] AtualizarConcluidaRequest request)
         {
-            if (!TryObterUsuarioId(out var usuarioId))
-            {
-                return Unauthorized();
-            }
+            if (!IsLogado()) return Unauthorized();
 
             try
             {
-                var atualizado = await _tarefasRepositorio.AtualizarConcluidaAsync(request.TarefaId, usuarioId, request.Concluida);
-                return Json(new { success = atualizado, message = atualizado ? string.Empty : "Não foi possível atualizar a tarefa." });
+                // Para conseguir "desmarcar", fazemos PUT completo baseado no DTO atual
+                // (A API hoje não tem endpoint de "desconcluir", então a gente atualiza via PUT)
+                var tarefas = await _tarefasApi.ObterPorListaAsync(request.ListaId);
+                var atual = tarefas.FirstOrDefault(t => t.ID == request.TarefaId);
+                if (atual == null)
+                    return Json(new { success = false, message = "Tarefa não encontrada." });
+
+                await _tarefasApi.AtualizarAsync(
+                    id: atual.ID,
+                    listaId: atual.ListaId,
+                    titulo: atual.Titulo,
+                    descricao: atual.Descricao,
+                    tags: atual.Tags,
+                    prioridadeId: atual.PrioridadeId,
+                    concluida: request.Concluida,
+                    arquivada: atual.Arquivada,
+                    dataVencimento: atual.DataVencimento,
+                    ordem: 0
+                );
+
+                return Json(new { success = true, message = string.Empty });
+            }
+            catch (TaskGX.Web.Services.ApiUnauthorizedException)
+            {
+                LimparSessao();
+                return Unauthorized();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao marcar tarefa.");
-                return BadRequest();
+                _logger.LogError(ex, "Erro ao marcar tarefa via API.");
+                return Json(new { success = false, message = "Erro ao atualizar a tarefa." });
             }
         }
 
-
+        // =========================
+        // Excluir tarefa (JS -> fetch)
+        // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Excluir([FromBody] TarefaIdRequest request)
         {
-            if (!TryObterUsuarioId(out var usuarioId))
-            {
-                return Unauthorized();
-            }
+            if (!IsLogado()) return Unauthorized();
 
             try
             {
-                var excluida = await _tarefasRepositorio.ExcluirTarefaAsync(request.TarefaId, usuarioId);
-                return Json(new { success = excluida, message = excluida ? string.Empty : "Não foi possível excluir a tarefa." });
+                await _tarefasApi.RemoverAsync(request.TarefaId);
+                return Json(new { success = true, message = string.Empty });
+            }
+            catch (TaskGX.Web.Services.ApiUnauthorizedException)
+            {
+                LimparSessao();
+                return Unauthorized();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao excluir tarefa.");
-                return BadRequest();
+                _logger.LogError(ex, "Erro ao excluir tarefa via API.");
+                return Json(new { success = false, message = "Não foi possível excluir a tarefa." });
             }
         }
 
+        // =========================
+        // Duplicar tarefa (JS -> fetch)
+        // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Duplicar([FromBody] TarefaIdRequest request)
+        public async Task<IActionResult> Duplicar([FromBody] DuplicarTarefaRequest request)
         {
-            if (!TryObterUsuarioId(out var usuarioId))
-            {
-                return Unauthorized();
-            }
+            if (!IsLogado()) return Unauthorized();
 
             try
             {
-                var novaId = await _tarefasRepositorio.DuplicarTarefaAsync(request.TarefaId, usuarioId);
-                return Json(new { success = novaId > 0, message = novaId > 0 ? string.Empty : "Não foi possível duplicar a tarefa." });
+                var tarefas = await _tarefasApi.ObterPorListaAsync(request.ListaId);
+                var atual = tarefas.FirstOrDefault(t => t.ID == request.TarefaId);
+                if (atual == null)
+                    return Json(new { success = false, message = "Tarefa não encontrada." });
+
+                await _tarefasApi.CriarAsync(
+                    listaId: atual.ListaId,
+                    titulo: atual.Titulo,
+                    descricao: atual.Descricao,
+                    tags: atual.Tags,
+                    prioridadeId: atual.PrioridadeId,
+                    dataVencimento: atual.DataVencimento
+                );
+
+                return Json(new { success = true, message = string.Empty });
+            }
+            catch (TaskGX.Web.Services.ApiUnauthorizedException)
+            {
+                LimparSessao();
+                return Unauthorized();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao duplicar tarefa.");
-                return BadRequest();
+                _logger.LogError(ex, "Erro ao duplicar tarefa via API.");
+                return Json(new { success = false, message = "Não foi possível duplicar a tarefa." });
             }
         }
 
+        // =========================
+        // Exportar (continua no site, mas dados vêm da API)
+        // =========================
         [HttpGet]
         public async Task<IActionResult> Exportar(string formato, int listaId)
         {
-            if (!TryObterUsuarioId(out var usuarioId))
-            {
-                return RedirectToAction("Login", "Home");
-            }
+            if (!IsLogado()) return RedirectToAction("Login", "Home");
 
             try
             {
-                var favoritaExists = await _dashboardRepositorio.ColunaExisteAsync("Listas", "Favorita");
-                var lista = await _dashboardRepositorio.ObterListaAsync(listaId, usuarioId, favoritaExists);
+                var listas = await _listasApi.ObterListasAsync();
+                var lista = listas.FirstOrDefault(l => l.ID == listaId);
                 if (lista == null)
-                {
                     return RedirectToAction("Dashboard", "Home");
-                }
 
-                var tarefas = await _dashboardRepositorio.ObterTarefasPorListaAsync(listaId);
+                var tarefas = await _tarefasApi.ObterPorListaAsync(listaId);
 
                 if (string.Equals(formato, "csv", StringComparison.OrdinalIgnoreCase))
                 {
                     var csv = new StringBuilder();
                     csv.AppendLine("ID,Titulo,Descricao,Prioridade,Tags,Concluida,DataVencimento,DataCriacao");
-                    foreach (var tarefa in tarefas)
+
+                    foreach (var t in tarefas)
                     {
                         csv.AppendLine(string.Join(',', new[]
                         {
-                            tarefa.ID.ToString(),
-                            EscapeCsv(tarefa.Titulo),
-                            EscapeCsv(tarefa.Descricao),
-                            EscapeCsv(tarefa.PrioridadeNome),
-                            EscapeCsv(tarefa.Tags),
-                            tarefa.Concluida ? "1" : "0",
-                            tarefa.DataVencimento?.ToString("yyyy-MM-dd") ?? string.Empty,
-                            tarefa.DataCriacao.ToString("yyyy-MM-dd")
+                            t.ID.ToString(),
+                            EscapeCsv(t.Titulo),
+                            EscapeCsv(t.Descricao),
+                            EscapeCsv(t.PrioridadeNome),
+                            EscapeCsv(t.Tags),
+                            t.Concluida ? "1" : "0",
+                            t.DataVencimento?.ToString("yyyy-MM-dd") ?? string.Empty,
+                            t.DataCriacao.ToString("yyyy-MM-dd")
                         }));
                     }
 
@@ -251,38 +319,42 @@ namespace TaskGX.Controllers
                 var json = JsonSerializer.Serialize(tarefas);
                 return File(Encoding.UTF8.GetBytes(json), "application/json", $"tarefas_{listaId}.json");
             }
+            catch (TaskGX.Web.Services.ApiUnauthorizedException)
+            {
+                LimparSessao();
+                return RedirectToAction("Login", "Home");
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao exportar tarefas.");
+                _logger.LogError(ex, "Erro ao exportar tarefas via API.");
                 TempData["Error"] = "Erro ao exportar tarefas.";
                 return RedirectToAction("Dashboard", "Home", new { listaId });
             }
         }
 
-        private bool TryObterUsuarioId(out int usuarioId)
+        // =========================
+        // Helpers
+        // =========================
+        private bool IsLogado() => !string.IsNullOrWhiteSpace(_api.GetToken());
+
+        private void LimparSessao()
         {
-            var usuarioIdValue = HttpContext.Session.GetString("UsuarioID");
-            return int.TryParse(usuarioIdValue, out usuarioId);
+            HttpContext.Session.Clear();
+            _api.ClearToken();
         }
 
         private static string EscapeCsv(string? valor)
         {
-            if (string.IsNullOrEmpty(valor))
-            {
-                return string.Empty;
-            }
+            if (string.IsNullOrEmpty(valor)) return string.Empty;
 
             var precisaEscape = valor.Contains(',') || valor.Contains('"') || valor.Contains('\n');
-            if (!precisaEscape)
-            {
-                return valor;
-            }
+            if (!precisaEscape) return valor;
 
             return $"\"{valor.Replace("\"", "\"\"")}\"";
         }
 
-        public sealed record AtualizarConcluidaRequest(int TarefaId, bool Concluida);
-
+        public sealed record AtualizarConcluidaRequest(int TarefaId, bool Concluida, int ListaId);
         public sealed record TarefaIdRequest(int TarefaId);
+        public sealed record DuplicarTarefaRequest(int TarefaId, int ListaId);
     }
 }

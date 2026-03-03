@@ -1,6 +1,6 @@
 using System;
 
-namespace TaskGX.Models
+namespace TaskGX.Controllers.Models
 {
     public class Lista
     {

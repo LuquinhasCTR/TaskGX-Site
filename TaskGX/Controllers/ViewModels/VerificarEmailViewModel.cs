@@ -1,4 +1,4 @@
-namespace TaskGX.ViewModels
+namespace TaskGX.Controllers.ViewModels
 {
     public class VerificarEmailViewModel
     {

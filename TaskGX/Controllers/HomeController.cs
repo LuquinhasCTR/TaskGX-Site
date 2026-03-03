@@ -1,365 +1,38 @@
-using Microsoft.AspNetCore.Http;
+ï»¿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
-using TaskGX.Data;
-using TaskGX.Models;
-using TaskGX.Services;
-using TaskGX.Tools;
-using TaskGX.ViewModels;
-using TaskGX.ViewModels;
+using TaskGX.ApiModels;
+using TaskGX.Controllers.ViewModels;
+using TaskGX.Web.Services;
 
 namespace TaskGX.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly ServicoAutenticacao _authService;
-        private readonly RepositorioDashboard _dashboardRepositorio;
-        private readonly RepositorioUsuario _usuarioRepositorio;
+        private readonly ApiClient _api;
         private readonly ILogger<HomeController> _logger;
 
-        public HomeController(
-            ServicoAutenticacao authService,
-            RepositorioDashboard dashboardRepositorio,
-            RepositorioUsuario usuarioRepositorio,
-            ILogger<HomeController> logger)
+        public HomeController(ApiClient api, ILogger<HomeController> logger)
         {
-            _authService = authService;
-            _dashboardRepositorio = dashboardRepositorio;
-            _usuarioRepositorio = usuarioRepositorio;
+            _api = api;
             _logger = logger;
         }
 
         // =========================
-        // Páginas comuns
+        // PÃ¡ginas comuns
         // =========================
         public IActionResult Index()
         {
-            if (TryObterUsuarioId(out _))
-            {
-                return RedirectToAction("Dashboard");
-            }
-
+            if (IsLogado()) return RedirectToAction(nameof(Dashboard));
             return View();
         }
+
         public IActionResult Termos() => View();
         public IActionResult Privacidade() => View();
         public IActionResult Sobre() => View();
-        [HttpGet]
-        public IActionResult VerificarEmail(bool novo = false, bool senha = false, string? erro = null, string? sucesso = null, string? email = null)
-        {
-            var usuarioLogado = TryObterUsuarioId(out _);
-            if (!novo && !senha && !usuarioLogado)
-            {
-                TempData["Error"] = "Você precisa fazer login.";
-                return RedirectToAction("Login");
-            }
-
-            var usuarioEmail = HttpContext.Session.GetString("UsuarioEmail");
-            var viewModel = new VerificarEmailViewModel
-            {
-                NovoRegistro = novo,
-                TrocaSenha = senha,
-                Erro = !string.IsNullOrWhiteSpace(erro) ? erro : TempData["Error"] as string,
-                Sucesso = !string.IsNullOrWhiteSpace(sucesso) ? sucesso : TempData["Success"] as string,
-                Email = !string.IsNullOrWhiteSpace(email) ? email : usuarioEmail
-            };
-
-            return View(viewModel);
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ProcessarVerificacaoEmail(string codigo, string tipo, string? email)
-        {
-            if (!string.Equals(tipo, "registro", StringComparison.OrdinalIgnoreCase))
-            {
-                return RedirectToAction("VerificarEmail", new
-                {
-                    novo = string.Equals(tipo, "registro", StringComparison.OrdinalIgnoreCase),
-                    senha = string.Equals(tipo, "senha", StringComparison.OrdinalIgnoreCase),
-                    email,
-                    erro = "Fluxo de verificação não disponível."
-                });
-            }
-
-            var resultado = await _authService.VerificarEmailAsync(email ?? string.Empty, codigo ?? string.Empty);
-            if (!resultado.Sucesso)
-            {
-                return RedirectToAction("VerificarEmail", new { novo = true, email, erro = resultado.Mensagem });
-            }
-
-            TempData["Success"] = resultado.Mensagem;
-            return RedirectToAction("Login");
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ReenviarCodigo(string tipo, string? email)
-        {
-            if (!string.Equals(tipo, "registro", StringComparison.OrdinalIgnoreCase))
-            {
-                return RedirectToAction("VerificarEmail", new
-                {
-                    novo = string.Equals(tipo, "registro", StringComparison.OrdinalIgnoreCase),
-                    senha = string.Equals(tipo, "senha", StringComparison.OrdinalIgnoreCase),
-                    email,
-                    erro = "Fluxo de reenvio não disponível."
-                });
-            }
-
-            var resultado = await _authService.ReenviarCodigoAsync(email ?? string.Empty);
-            if (!resultado.Sucesso)
-            {
-                return RedirectToAction("VerificarEmail", new { novo = true, email, erro = resultado.Mensagem });
-            }
-
-            return RedirectToAction("VerificarEmail", new { novo = true, email, sucesso = resultado.Mensagem });
-        }
-        [HttpGet]
-        public async Task<IActionResult> Calendario()
-        {
-            if (!TryObterUsuarioId(out var usuarioId))
-            {
-                return RedirectToAction("Login");
-            }
-
-            try
-            {
-                var favoritaExists = await _dashboardRepositorio.ColunaExisteAsync("Listas", "Favorita");
-                var listas = await _dashboardRepositorio.ObterListasAsync(usuarioId, favoritaExists);
-                var prioridades = await _dashboardRepositorio.ObterPrioridadesAsync();
-                var tarefas = await _dashboardRepositorio.ObterTarefasUsuarioAsync(usuarioId);
-
-                var viewModel = new CalendarioViewModel
-                {
-                    Listas = listas,
-                    Prioridades = prioridades,
-                    Tarefas = tarefas
-                };
-
-                return View(viewModel);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erro ao carregar calendário.");
-                TempData["Error"] = "Erro ao carregar calendário.";
-                return RedirectToAction("Dashboard");
-            }
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> Perfil()
-        {
-            if (!TryObterUsuarioId(out var usuarioId))
-            {
-                return RedirectToAction("Login");
-            }
-
-            try
-            {
-                var usuario = await _usuarioRepositorio.ObterPorIdAsync(usuarioId);
-                if (usuario == null)
-                {
-                    return RedirectToAction("Logout");
-                }
-
-                var stats = await _dashboardRepositorio.ObterEstatisticasContaAsync(usuarioId);
-                var viewModel = new PerfilViewModel
-                {
-                    Usuario = usuario,
-                    TotalListas = stats.TotalListas,
-                    TotalTarefas = stats.TotalTarefas,
-                    TarefasConcluidas = stats.TarefasConcluidas,
-                    Sucesso = TempData["Success"] as string,
-                    Erro = TempData["Error"] as string
-                };
-
-                return View(viewModel);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erro ao carregar perfil.");
-                TempData["Error"] = "Erro ao carregar dados. Por favor, tente novamente.";
-                return RedirectToAction("Dashboard");
-            }
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AtualizarPerfil(string nome, string email)
-        {
-            if (!TryObterUsuarioId(out var usuarioId))
-            {
-                return RedirectToAction("Login");
-            }
-
-            if (string.IsNullOrWhiteSpace(nome) || string.IsNullOrWhiteSpace(email))
-            {
-                TempData["Error"] = "Nome e email são obrigatórios.";
-                return RedirectToAction("Perfil");
-            }
-
-            try
-            {
-                if (await _usuarioRepositorio.ExisteEmailOutroAsync(usuarioId, email))
-                {
-                    TempData["Error"] = "Email já cadastrado.";
-                    return RedirectToAction("Perfil");
-                }
-
-                await _usuarioRepositorio.AtualizarDadosAsync(usuarioId, nome.Trim(), email.Trim());
-                HttpContext.Session.SetString("UsuarioNome", nome.Trim());
-                TempData["Success"] = "Dados atualizados com sucesso.";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erro ao atualizar perfil.");
-                TempData["Error"] = "Erro ao atualizar dados.";
-            }
-
-            return RedirectToAction("Perfil");
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AlterarSenha(string senha_atual, string nova_senha, string confirmar_nova_senha)
-        {
-            if (!TryObterUsuarioId(out var usuarioId))
-            {
-                return RedirectToAction("Login");
-            }
-
-            if (string.IsNullOrWhiteSpace(senha_atual) || string.IsNullOrWhiteSpace(nova_senha) || string.IsNullOrWhiteSpace(confirmar_nova_senha))
-            {
-                TempData["Error"] = "Preencha todos os campos de senha.";
-                return RedirectToAction("Perfil");
-            }
-
-            if (!string.Equals(nova_senha, confirmar_nova_senha, StringComparison.Ordinal))
-            {
-                TempData["Error"] = "As senhas não coincidem.";
-                return RedirectToAction("Perfil");
-            }
-
-            if (!SenhaValida(nova_senha))
-            {
-                TempData["Error"] = "Senha não atende aos requisitos de segurança.";
-                return RedirectToAction("Perfil");
-            }
-
-            try
-            {
-                var usuario = await _usuarioRepositorio.ObterPorIdAsync(usuarioId);
-                if (usuario == null || !AjudaHash.VerificarSenha(senha_atual, usuario.Senha))
-                {
-                    TempData["Error"] = "Senha atual inválida.";
-                    return RedirectToAction("Perfil");
-                }
-
-                var novaHash = AjudaHash.GerarHashSenha(nova_senha);
-                await _usuarioRepositorio.AtualizarSenhaAsync(usuarioId, novaHash);
-                TempData["Success"] = "Senha atualizada com sucesso.";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erro ao alterar senha.");
-                TempData["Error"] = "Erro ao alterar senha.";
-            }
-
-            return RedirectToAction("Perfil");
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> Dashboard(int? listaId, string sucesso = null, string erro = null)
-        {
-            var usuarioIdValue = HttpContext.Session.GetString("UsuarioID");
-            if (!int.TryParse(usuarioIdValue, out var usuarioId))
-            {
-                return RedirectToAction("Login");
-            }
-
-            var usuarioNome = HttpContext.Session.GetString("UsuarioNome") ?? "Usuário";
-
-            var viewModel = new DashboardViewModel
-            {
-                UsuarioId = usuarioId,
-                UsuarioNome = usuarioNome,
-                ListaId = listaId ?? 0,
-                Sucesso = !string.IsNullOrWhiteSpace(sucesso) ? sucesso : TempData["Success"] as string,
-                Erro = !string.IsNullOrWhiteSpace(erro) ? erro : TempData["Error"] as string
-            };
-
-            try
-            {
-                var favoritaExists = await _dashboardRepositorio.ColunaExisteAsync("Listas", "Favorita");
-                var listas = await _dashboardRepositorio.ObterListasAsync(usuarioId, favoritaExists);
-                var prioridades = await _dashboardRepositorio.ObterPrioridadesAsync();
-                var todasTarefas = await _dashboardRepositorio.ObterTarefasUsuarioAsync(usuarioId);
-
-                var stats = new DashboardStats
-                {
-                    TotalListas = listas.Count
-                };
-
-                var hoje = DateTime.Today;
-                foreach (var tarefa in todasTarefas)
-                {
-                    stats.TotalTarefas++;
-                    if (tarefa.Concluida)
-                    {
-                        stats.TarefasConcluidas++;
-                    }
-                    else
-                    {
-                        stats.TarefasPendentes++;
-                        if (tarefa.DataVencimento.HasValue)
-                        {
-                            if (tarefa.DataVencimento.Value.Date < hoje)
-                            {
-                                stats.TarefasVencidas++;
-                            }
-                            else if (tarefa.DataVencimento.Value.Date == hoje)
-                            {
-                                stats.TarefasHoje++;
-                            }
-                        }
-                    }
-                }
-
-                viewModel.Listas = listas;
-                viewModel.Prioridades = prioridades;
-                viewModel.Stats = stats;
-
-                if (listaId.HasValue && listaId.Value > 0)
-                {
-                    var listaSelecionada = await _dashboardRepositorio.ObterListaAsync(listaId.Value, usuarioId, favoritaExists);
-                    if (listaSelecionada != null)
-                    {
-                        var tarefas = await _dashboardRepositorio.ObterTarefasPorListaAsync(listaId.Value);
-
-                        viewModel.ListaSelecionada = listaSelecionada;
-                        viewModel.Tarefas = tarefas;
-                    }
-                }
-                else
-                {
-                    viewModel.Tarefas = todasTarefas;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erro ao carregar dashboard.");
-                viewModel.Erro = "Erro ao carregar dados. Por favor, tente novamente.";
-                viewModel.Listas = new List<Lista>();
-                viewModel.Prioridades = new List<Prioridade>();
-                viewModel.Tarefas = new List<Tarefa>();
-                viewModel.Stats = new DashboardStats();
-            }
-
-            return View(viewModel);
-        }
 
         // =========================
         // LOGIN
@@ -367,6 +40,7 @@ namespace TaskGX.Controllers
         [HttpGet]
         public IActionResult Login()
         {
+            if (IsLogado()) return RedirectToAction(nameof(Dashboard));
             return View();
         }
 
@@ -374,27 +48,33 @@ namespace TaskGX.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(string email, string senha)
         {
-            var usuario = await _authService.LoginAsync(email, senha);
-
-            if (usuario == null)
+            try
             {
-                TempData["Error"] = "Email ou senha incorretos.";
+                var resp = await _api.PostAsync<LoginResponse>(
+                    "/api/auth/login",
+                    new { email, senha },
+                    auth: false
+                );
+
+                if (resp == null || string.IsNullOrWhiteSpace(resp.Token))
+                {
+                    TempData["Error"] = "Login falhou.";
+                    return View();
+                }
+
+                _api.SetToken(resp.Token);
+                HttpContext.Session.SetString("UsuarioID", resp.Usuario.ID.ToString());
+                HttpContext.Session.SetString("UsuarioNome", resp.Usuario.Nome ?? "UsuÃ¡rio");
+                HttpContext.Session.SetString("UsuarioEmail", resp.Usuario.Email ?? "");
+
+                return RedirectToAction(nameof(Dashboard));
+            }
+            catch (ApiException ex)
+            {
+                _logger.LogWarning(ex, "Falha no login");
+                TempData["Error"] = "Email ou senha incorretos (ou usuÃ¡rio nÃ£o autorizado).";
                 return View();
             }
-
-            if (!usuario.EmailVerificado)
-            {
-                HttpContext.Session.SetString("UsuarioEmail", usuario.Email);
-                TempData["Error"] = "Você precisa verificar seu email antes de entrar.";
-                return RedirectToAction("VerificarEmail", new { novo = true, email = usuario.Email });
-            }
-
-            // Criar sessão
-            HttpContext.Session.SetString("UsuarioID", usuario.ID.ToString());
-            HttpContext.Session.SetString("UsuarioNome", usuario.Nome);
-            HttpContext.Session.SetString("UsuarioEmail", usuario.Email);
-
-            return RedirectToAction("Dashboard");
         }
 
         // =========================
@@ -403,38 +83,40 @@ namespace TaskGX.Controllers
         [HttpGet]
         public IActionResult Registrar()
         {
+            if (IsLogado()) return RedirectToAction(nameof(Dashboard));
             return View();
         }
-        
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Registrar(RegisterViewModel model)
         {
             if (!ModelState.IsValid)
             {
-                var erros = string.Join(" ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
-                TempData["Error"] = string.IsNullOrWhiteSpace(erros)
-                    ? "Dados inválidos. Verifique os campos e tente novamente."
-                    : erros;
+                TempData["Error"] = "Dados invÃ¡lidos. Verifique os campos.";
                 return View(model);
             }
 
-            // Chama o serviço de autenticação
-            var resultado = await _authService.CriarContaAsync(
-                model.Nome,
-                model.Email,
-                model.Senha,
-                model.ConfirmarSenha
-            );
-
-            if (!resultado.Sucesso)
+            try
             {
-                ModelState.AddModelError(string.Empty, resultado.Mensagem);
+                await _api.PostAsync<object>(
+                    "/api/registration/register",
+                    new { nome = model.Nome, email = model.Email, senha = model.Senha },
+                    auth: false
+                );
+
+                TempData["Success"] = "Conta criada. Agora faÃ§a login.";
+                return RedirectToAction(nameof(Login));
+            }
+            catch (ApiException ex)
+            {
+                _logger.LogWarning(ex, "Falha ao registrar");
+                TempData["Error"] = string.IsNullOrWhiteSpace(ex.Message)
+                    ? "NÃ£o foi possÃ­vel criar a conta. Verifique os dados (ou email jÃ¡ existe)."
+                    : ex.Message;
+
                 return View(model);
             }
-
-            HttpContext.Session.SetString("UsuarioEmail", model.Email);
-            return RedirectToAction("VerificarEmail", new { novo = true, email = model.Email, sucesso = resultado.Mensagem });
         }
 
         // =========================
@@ -445,33 +127,100 @@ namespace TaskGX.Controllers
         public IActionResult Logout()
         {
             HttpContext.Session.Clear();
-            return RedirectToAction("Login");
+            _api.ClearToken();
+            return RedirectToAction(nameof(Login));
         }
 
-        private bool TryObterUsuarioId(out int usuarioId)
+        // =========================
+        // DASHBOARD (via API)
+        // =========================
+        [HttpGet]
+        public async Task<IActionResult> Dashboard(int? listaId, string? sucesso = null, string? erro = null)
         {
-            var usuarioIdValue = HttpContext.Session.GetString("UsuarioID");
-            return int.TryParse(usuarioIdValue, out usuarioId);
+            if (!IsLogado()) return RedirectToAction(nameof(Login));
+
+            var usuarioNome = HttpContext.Session.GetString("UsuarioNome") ?? "UsuÃ¡rio";
+
+            var viewModel = new DashboardViewModel
+            {
+                UsuarioNome = usuarioNome,
+                ListaId = listaId ?? 0,
+                Sucesso = !string.IsNullOrWhiteSpace(sucesso) ? sucesso : TempData["Success"] as string,
+                Erro = !string.IsNullOrWhiteSpace(erro) ? erro : TempData["Error"] as string,
+
+                // âœ… agora Ã© DTO
+                Listas = new List<ListaDTO>(),
+                Prioridades = new List<PrioridadeDTO>(),
+                Tarefas = new List<TarefaDTO>(),
+                ListaSelecionada = null,
+
+                Stats = new DashboardStats()
+            };
+
+            try
+            {
+                var prioridades = await _api.GetAsync<List<PrioridadeDTO>>("/api/prioridades", auth: true) ?? new();
+                var listas = await _api.GetAsync<List<ListaDTO>>("/api/listas", auth: true) ?? new();
+
+                // Se nÃ£o vier listaId, tenta usar a primeira lista
+                var effectiveListaId = (listaId.HasValue && listaId.Value > 0)
+                    ? listaId.Value
+                    : (listas.FirstOrDefault()?.ID ?? 0);
+
+                var listaSelecionada = listas.FirstOrDefault(l => l.ID == effectiveListaId);
+
+                var tarefas = (effectiveListaId > 0)
+                    ? await _api.GetAsync<List<TarefaDTO>>($"/api/tarefas?listaId={effectiveListaId}", auth: true) ?? new()
+                    : new List<TarefaDTO>();
+
+                viewModel.Listas = listas;
+                viewModel.Prioridades = prioridades;
+                viewModel.Tarefas = tarefas;
+                viewModel.ListaSelecionada = listaSelecionada;
+                viewModel.ListaId = effectiveListaId;
+
+                // Stats
+                viewModel.Stats.TotalListas = listas.Count;
+                viewModel.Stats.TotalTarefas = tarefas.Count;
+                viewModel.Stats.TarefasConcluidas = tarefas.Count(t => t.Concluida);
+                viewModel.Stats.TarefasPendentes = tarefas.Count(t => !t.Concluida);
+
+                var hoje = DateTime.Today;
+                viewModel.Stats.TarefasVencidas = tarefas.Count(t => !t.Concluida && t.DataVencimento.HasValue && t.DataVencimento.Value.Date < hoje);
+                viewModel.Stats.TarefasHoje = tarefas.Count(t => !t.Concluida && t.DataVencimento.HasValue && t.DataVencimento.Value.Date == hoje);
+
+                return View(viewModel);
+            }
+            catch (ApiUnauthorizedException)
+            {
+                HttpContext.Session.Clear();
+                _api.ClearToken();
+                return RedirectToAction(nameof(Login));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao carregar dashboard via API.");
+                viewModel.Erro = "Erro ao carregar dados. Por favor, tente novamente.";
+                return View(viewModel);
+            }
         }
 
-        private static bool SenhaValida(string senha)
+        // =========================
+        // Helpers
+        // =========================
+        private bool IsLogado()
         {
-            if (senha.Length < 8)
-            {
-                return false;
-            }
+            var token = _api.GetToken();
+            return !string.IsNullOrWhiteSpace(token);
+        }
 
-            if (!System.Text.RegularExpressions.Regex.IsMatch(senha, "[A-Z]"))
-            {
-                return false;
-            }
-
-            if (!System.Text.RegularExpressions.Regex.IsMatch(senha, @"[!@#$%^&*(),.?""':{}|<>]"))
-            {
-                return false;
-            }
-
-            return true;
+        // =========================
+        // DTO de resposta do login
+        // =========================
+        private class LoginResponse
+        {
+            public string Token { get; set; } = string.Empty;
+            public UsuarioDTO Usuario { get; set; } = new();
         }
     }
 }

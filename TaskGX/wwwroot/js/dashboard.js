@@ -23,27 +23,13 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.addEventListener('hidden.bs.modal', () => {
             acaoInput.value = 'criar';
             tarefaIdInput.value = '';
-            if (tituloModal) {
-                tituloModal.textContent = 'Nova Tarefa';
-            }
-            if (btnSalvar) {
-                btnSalvar.textContent = 'Criar Tarefa';
-            }
-            if (tituloInput) {
-                tituloInput.value = '';
-            }
-            if (descricaoInput) {
-                descricaoInput.value = '';
-            }
-            if (prioridadeInput) {
-                prioridadeInput.value = '';
-            }
-            if (dataInput) {
-                dataInput.value = '';
-            }
-            if (tagsInput) {
-                tagsInput.value = '';
-            }
+            if (tituloModal) tituloModal.textContent = 'Nova Tarefa';
+            if (btnSalvar) btnSalvar.textContent = 'Criar Tarefa';
+            if (tituloInput) tituloInput.value = '';
+            if (descricaoInput) descricaoInput.value = '';
+            if (prioridadeInput) prioridadeInput.value = '';
+            if (dataInput) dataInput.value = '';
+            if (tagsInput) tagsInput.value = '';
         });
     }
 
@@ -81,6 +67,12 @@ function getAntiForgeryToken() {
     return tokenInput ? tokenInput.value : '';
 }
 
+function getListaIdAtual() {
+    const el = document.getElementById('lista-id-data');
+    const value = el?.getAttribute('data-lista-id');
+    return value ? parseInt(value, 10) : null;
+}
+
 async function postJson(url, payload) {
     const token = getAntiForgeryToken();
     const response = await fetch(url, {
@@ -100,7 +92,9 @@ async function postJson(url, payload) {
 }
 
 function marcarTarefa(tarefaId, concluida) {
-    postJson('/Tarefas/MarcarConcluida', { tarefaId, concluida })
+    const listaId = getListaIdAtual();
+
+    postJson('/Tarefas/MarcarConcluida', { tarefaId, concluida, listaId })
         .then(result => {
             if (result?.success) {
                 window.location.reload();
@@ -110,7 +104,6 @@ function marcarTarefa(tarefaId, concluida) {
         })
         .catch(() => alert('Erro ao marcar tarefa.'));
 }
-
 
 function excluirTarefa(tarefaId, titulo) {
     if (!confirm(`Deseja excluir a tarefa "${titulo}"?`)) {
@@ -129,7 +122,9 @@ function excluirTarefa(tarefaId, titulo) {
 }
 
 function duplicarTarefa(tarefaId) {
-    postJson('/Tarefas/Duplicar', { tarefaId })
+    const listaId = getListaIdAtual();
+
+    postJson('/Tarefas/Duplicar', { tarefaId, listaId })
         .then(result => {
             if (result?.success) {
                 window.location.reload();
@@ -149,18 +144,10 @@ function editarTarefa(tarefaId, titulo, descricao, prioridadeId, dataVencimento,
     const tituloModal = document.getElementById('tituloModalTarefa');
     const btnSalvar = document.getElementById('btnSalvarTarefa');
 
-    if (acaoInput) {
-        acaoInput.value = 'editar';
-    }
-    if (tarefaIdInput) {
-        tarefaIdInput.value = tarefaId;
-    }
-    if (tituloModal) {
-        tituloModal.textContent = 'Editar Tarefa';
-    }
-    if (btnSalvar) {
-        btnSalvar.textContent = 'Salvar Alterações';
-    }
+    if (acaoInput) acaoInput.value = 'editar';
+    if (tarefaIdInput) tarefaIdInput.value = tarefaId;
+    if (tituloModal) tituloModal.textContent = 'Editar Tarefa';
+    if (btnSalvar) btnSalvar.textContent = 'Salvar Alterações';
 
     const tituloInput = document.getElementById('tituloTarefa');
     const descricaoInput = document.getElementById('descricaoTarefa');
@@ -168,23 +155,11 @@ function editarTarefa(tarefaId, titulo, descricao, prioridadeId, dataVencimento,
     const dataInput = document.getElementById('dataVencimento');
     const tagsInput = document.getElementById('tagsTarefa');
 
-    if (tituloInput) {
-        tituloInput.value = titulo || '';
-    }
-    if (descricaoInput) {
-        descricaoInput.value = descricao || '';
-    }
-    if (prioridadeInput) {
-        prioridadeInput.value = prioridadeId ?? '';
-    }
-    if (dataInput) {
-        dataInput.value = dataVencimento || '';
-    }
-    if (tagsInput) {
-        tagsInput.value = tags || '';
-    }
+    if (tituloInput) tituloInput.value = titulo || '';
+    if (descricaoInput) descricaoInput.value = descricao || '';
+    if (prioridadeInput) prioridadeInput.value = prioridadeId ?? '';
+    if (dataInput) dataInput.value = dataVencimento || '';
+    if (tagsInput) tagsInput.value = tags || '';
 
-    if (modal) {
-        modal.show();
-    }
+    if (modal) modal.show();
 }

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using TaskGX.Models;
+using TaskGX.Controllers.Models;
 
-namespace TaskGX.ViewModels
+namespace TaskGX.Controllers.ViewModels
 {
     public class DashboardViewModel
     {
