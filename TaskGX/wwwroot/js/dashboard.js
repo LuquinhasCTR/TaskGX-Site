@@ -100,6 +100,12 @@ async function postJson(url, payload) {
 }
 
 function marcarTarefa(tarefaId, concluida) {
+    if (!concluida) {
+        alert('A API atual suporta apenas concluir tarefas.');
+        window.location.reload();
+        return;
+    }
+
     postJson('/Tarefas/MarcarConcluida', { tarefaId, concluida })
         .then(result => {
             if (result?.success) {
