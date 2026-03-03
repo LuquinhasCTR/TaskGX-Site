@@ -1,11 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
-using TaskGX.ApiModels;
 using TaskGX.Services;
 using TaskGX.Web.Services;
 
@@ -15,7 +11,7 @@ namespace TaskGX.Controllers
     {
         private readonly ListasApiService _listasApi;
         private readonly TarefasApiService _tarefasApi;
-        private readonly ApiClient _api; // para chamadas extras se precisar
+        private readonly ApiClient _api;
         private readonly ILogger<TarefasController> _logger;
 
         public TarefasController(
@@ -30,9 +26,6 @@ namespace TaskGX.Controllers
             _logger = logger;
         }
 
-        // =========================
-        // LISTAS (do modal "Nova Lista")
-        // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ProcessarLista(string nome, string cor, string acao)
@@ -56,7 +49,7 @@ namespace TaskGX.Controllers
                 await _listasApi.CriarListaAsync(nome.Trim(), cor);
                 TempData["Success"] = "Lista criada com sucesso.";
             }
-            catch (TaskGX.Web.Services.ApiUnauthorizedException)
+            catch (ApiUnauthorizedException)
             {
                 LimparSessao();
                 return RedirectToAction("Login", "Home");
@@ -70,9 +63,6 @@ namespace TaskGX.Controllers
             return RedirectToAction("Dashboard", "Home");
         }
 
-        // =========================
-        // TAREFAS (modal "Nova Tarefa" e "Editar")
-        // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ProcessarTarefa(
@@ -123,26 +113,14 @@ namespace TaskGX.Controllers
                         return RedirectToAction("Dashboard", "Home", new { listaId = listaIdDestino });
                     }
 
-                    // Para editar com segurança, pegamos as tarefas da lista e achamos a tarefa atual
-                    var tarefas = await _tarefasApi.ObterPorListaAsync(listaIdDestino);
-                    var atual = tarefas.FirstOrDefault(t => t.ID == tarefa_id.Value);
-                    if (atual == null)
-                    {
-                        TempData["Error"] = "Tarefa não encontrada.";
-                        return RedirectToAction("Dashboard", "Home", new { listaId = listaIdDestino });
-                    }
-
-                    await _tarefasApi.AtualizarAsync(
-                        id: atual.ID,
-                        listaId: atual.ListaId,
+                    await _tarefasApi.AtualizarDetalhesAsync(
+                        id: tarefa_id.Value,
+                        listaId: listaIdDestino,
                         titulo: titulo.Trim(),
                         descricao: descricao,
                         tags: tags,
                         prioridadeId: prioridade_id,
-                        concluida: atual.Concluida,
-                        arquivada: atual.Arquivada,
-                        dataVencimento: data_vencimento,
-                        ordem: 0
+                        dataVencimento: data_vencimento
                     );
 
                     TempData["Success"] = "Tarefa atualizada com sucesso.";
@@ -152,7 +130,7 @@ namespace TaskGX.Controllers
                     TempData["Error"] = "Ação inválida para tarefa.";
                 }
             }
-            catch (TaskGX.Web.Services.ApiUnauthorizedException)
+            catch (ApiUnauthorizedException)
             {
                 LimparSessao();
                 return RedirectToAction("Login", "Home");
@@ -166,9 +144,6 @@ namespace TaskGX.Controllers
             return RedirectToAction("Dashboard", "Home", new { listaId = listaIdDestino });
         }
 
-        // =========================
-        // Marcar concluída (JS -> fetch)
-        // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> MarcarConcluida([FromBody] AtualizarConcluidaRequest request)
@@ -177,29 +152,10 @@ namespace TaskGX.Controllers
 
             try
             {
-                // Para conseguir "desmarcar", fazemos PUT completo baseado no DTO atual
-                // (A API hoje não tem endpoint de "desconcluir", então a gente atualiza via PUT)
-                var tarefas = await _tarefasApi.ObterPorListaAsync(request.ListaId);
-                var atual = tarefas.FirstOrDefault(t => t.ID == request.TarefaId);
-                if (atual == null)
-                    return Json(new { success = false, message = "Tarefa não encontrada." });
-
-                await _tarefasApi.AtualizarAsync(
-                    id: atual.ID,
-                    listaId: atual.ListaId,
-                    titulo: atual.Titulo,
-                    descricao: atual.Descricao,
-                    tags: atual.Tags,
-                    prioridadeId: atual.PrioridadeId,
-                    concluida: request.Concluida,
-                    arquivada: atual.Arquivada,
-                    dataVencimento: atual.DataVencimento,
-                    ordem: 0
-                );
-
+                await _tarefasApi.AtualizarConclusaoAsync(request.TarefaId, request.Concluida);
                 return Json(new { success = true, message = string.Empty });
             }
-            catch (TaskGX.Web.Services.ApiUnauthorizedException)
+            catch (ApiUnauthorizedException)
             {
                 LimparSessao();
                 return Unauthorized();
@@ -211,9 +167,6 @@ namespace TaskGX.Controllers
             }
         }
 
-        // =========================
-        // Excluir tarefa (JS -> fetch)
-        // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Excluir([FromBody] TarefaIdRequest request)
@@ -225,7 +178,7 @@ namespace TaskGX.Controllers
                 await _tarefasApi.RemoverAsync(request.TarefaId);
                 return Json(new { success = true, message = string.Empty });
             }
-            catch (TaskGX.Web.Services.ApiUnauthorizedException)
+            catch (ApiUnauthorizedException)
             {
                 LimparSessao();
                 return Unauthorized();
@@ -237,9 +190,6 @@ namespace TaskGX.Controllers
             }
         }
 
-        // =========================
-        // Duplicar tarefa (JS -> fetch)
-        // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Duplicar([FromBody] DuplicarTarefaRequest request)
@@ -248,23 +198,10 @@ namespace TaskGX.Controllers
 
             try
             {
-                var tarefas = await _tarefasApi.ObterPorListaAsync(request.ListaId);
-                var atual = tarefas.FirstOrDefault(t => t.ID == request.TarefaId);
-                if (atual == null)
-                    return Json(new { success = false, message = "Tarefa não encontrada." });
-
-                await _tarefasApi.CriarAsync(
-                    listaId: atual.ListaId,
-                    titulo: atual.Titulo,
-                    descricao: atual.Descricao,
-                    tags: atual.Tags,
-                    prioridadeId: atual.PrioridadeId,
-                    dataVencimento: atual.DataVencimento
-                );
-
+                await _tarefasApi.DuplicarAsync(request.TarefaId);
                 return Json(new { success = true, message = string.Empty });
             }
-            catch (TaskGX.Web.Services.ApiUnauthorizedException)
+            catch (ApiUnauthorizedException)
             {
                 LimparSessao();
                 return Unauthorized();
@@ -276,9 +213,6 @@ namespace TaskGX.Controllers
             }
         }
 
-        // =========================
-        // Exportar (continua no site, mas dados vêm da API)
-        // =========================
         [HttpGet]
         public async Task<IActionResult> Exportar(string formato, int listaId)
         {
@@ -286,40 +220,19 @@ namespace TaskGX.Controllers
 
             try
             {
-                var listas = await _listasApi.ObterListasAsync();
-                var lista = listas.FirstOrDefault(l => l.ID == listaId);
-                if (lista == null)
-                    return RedirectToAction("Dashboard", "Home");
+                var extension = string.Equals(formato, "csv", StringComparison.OrdinalIgnoreCase) ? "csv" : "json";
+                var contentType = extension == "csv" ? "text/csv" : "application/json";
+                var arquivo = await _tarefasApi.ExportarAsync(listaId, extension);
 
-                var tarefas = await _tarefasApi.ObterPorListaAsync(listaId);
-
-                if (string.Equals(formato, "csv", StringComparison.OrdinalIgnoreCase))
+                if (arquivo == null || arquivo.Length == 0)
                 {
-                    var csv = new StringBuilder();
-                    csv.AppendLine("ID,Titulo,Descricao,Prioridade,Tags,Concluida,DataVencimento,DataCriacao");
-
-                    foreach (var t in tarefas)
-                    {
-                        csv.AppendLine(string.Join(',', new[]
-                        {
-                            t.ID.ToString(),
-                            EscapeCsv(t.Titulo),
-                            EscapeCsv(t.Descricao),
-                            EscapeCsv(t.PrioridadeNome),
-                            EscapeCsv(t.Tags),
-                            t.Concluida ? "1" : "0",
-                            t.DataVencimento?.ToString("yyyy-MM-dd") ?? string.Empty,
-                            t.DataCriacao.ToString("yyyy-MM-dd")
-                        }));
-                    }
-
-                    return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"tarefas_{listaId}.csv");
+                    TempData["Error"] = "Nenhum dado para exportar.";
+                    return RedirectToAction("Dashboard", "Home", new { listaId });
                 }
 
-                var json = JsonSerializer.Serialize(tarefas);
-                return File(Encoding.UTF8.GetBytes(json), "application/json", $"tarefas_{listaId}.json");
+                return File(arquivo, contentType, $"tarefas_{listaId}.{extension}");
             }
-            catch (TaskGX.Web.Services.ApiUnauthorizedException)
+            catch (ApiUnauthorizedException)
             {
                 LimparSessao();
                 return RedirectToAction("Login", "Home");
@@ -332,25 +245,12 @@ namespace TaskGX.Controllers
             }
         }
 
-        // =========================
-        // Helpers
-        // =========================
         private bool IsLogado() => !string.IsNullOrWhiteSpace(_api.GetToken());
 
         private void LimparSessao()
         {
             HttpContext.Session.Clear();
             _api.ClearToken();
-        }
-
-        private static string EscapeCsv(string? valor)
-        {
-            if (string.IsNullOrEmpty(valor)) return string.Empty;
-
-            var precisaEscape = valor.Contains(',') || valor.Contains('"') || valor.Contains('\n');
-            if (!precisaEscape) return valor;
-
-            return $"\"{valor.Replace("\"", "\"\"")}\"";
         }
 
         public sealed record AtualizarConcluidaRequest(int TarefaId, bool Concluida, int ListaId);
